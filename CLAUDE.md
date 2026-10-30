@@ -54,8 +54,13 @@ npm run lint      # oxlint
 - Boş durumlarda yönlendirici mesaj göster ("Henüz işlem yok — + ile ekle").
 
 ## Çalışma ortamı
-- Proje: `C:\Users\kenar\Desktop\Projects\CLAUDE\butce-app` (git deposu). `node_modules` Windows'ta `npm install` ile kurulur; başka platformdan kopyalanmaz.
-- **claude.ai oturumunda** (bulut + bilgisayar köprüsü): klasörü tek `tar` ile buluta al (`.sync/from-pc.tgz`, node_modules hariç) → bulutta `npm ci`, test, build, tarayıcı testi → değişenleri tek `tar` ile geri yaz (`.sync/to-pc.tgz`, `tar --overwrite` ile aç) → bilgisayarda `git commit`. Dosya dosya aktarma yapma. `.sync/` git dışında.
+- **Ana kaynak: GitHub `Kenar-MC/butce-app`** (public). `main`'e her push → GitHub Actions test + build → https://kenar-mc.github.io/butce-app/ (2–3 dk).
+- Mehmet'in PC kopyası: `C:\Users\kenar\Desktop\Projects\CLAUDE\butce-app` (origin = GitHub). Güncellemek için orada `git pull`. `node_modules` Windows'ta `npm install` ile kurulur.
+- **claude.ai oturumunda:** `add_repo` (Kenar-MC/butce-app, push) → klonda çalış → `npm ci`, test, build, Playwright → commit + `git push origin main`. PC'ye dosya taşıma gerekmez.
+- Bulutta build hatası "Cannot find module @rollup/rollup-linux-x64-gnu" verirse: `npm i --no-save @rollup/rollup-linux-x64-gnu@<rollup sürümü>` (lock dosyası doğru, sadece yerel kurulum eksik).
+- Bilgisayara dosya göndermek gerekirse (`device_commit_files`) her seferinde **farklı dosya adı** kullan; aynı ad eski içeriği gönderebiliyor.
+- iPhone: Safari → Paylaş → Ana Ekrana Ekle. Ana ekran uygulamasının verisi Safari sekmesinden ayrıdır. Yeni sürüm uygulama bir sonraki açılışta kendiliğinden yüklenir (service worker, autoUpdate).
+- Ekstre Okuyucu (claude.ai artifact, slug `b641fe36-294a-4557-a21e-93df983c9bd9`): fotoğraf → `kind:"import"` JSON. Biçim: SPEC §3.8.
 - Uçtan uca kontrol: Playwright ile 360px genişlikte ana akış (hesap ekle → işlem ekle → bakiye/liste doğrula). Ekran görüntülerini tek bir birleşik görselde incele.
 - Alt ajan (subagent) kullanma; proje küçük, tek akışta ilerle.
 
