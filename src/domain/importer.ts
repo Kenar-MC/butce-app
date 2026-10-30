@@ -1,4 +1,5 @@
 import type { Category, CategoryKind, Transaction } from '../db/types'
+import { addMonths } from './dates'
 
 /**
  * Ekstre Okuyucu'nun ürettiği içe aktarma dosyası (kind: "import", version 1).
@@ -180,13 +181,29 @@ export interface ImportOptions {
   paymentCounterpartyId?: string | null
   /** Hedef hesap kart mı? Kartsa ödeme karşı hesaptan karta, değilse bu hesaptan karta transferdir */
   targetIsCard?: boolean
+  /** Hesap kesim tarihi: eski taksit satırları bu tarihe yazılır */
+  statementDate?: string
   categories: Category[]
   existing: Pick<Transaction, 'date' | 'type' | 'amount' | 'accountId' | 'toAccountId'>[]
   now: string
   newId: () => string
 }
 
+export interface PlannedRow {
+  /** Dosyadaki sıra (gözden geçirme ekranında anahtar) */
+  index: number
+  item: ImportItem
+  /** null: kart ödemesi ve karşı hesap seçilmedi */
+  tx: Transaction | null
+  /** Aynı tarih+tür+tutar+hesap ile zaten kayıtlı */
+  duplicate: boolean
+  /** Eski taksit satırı ekstre tarihine taşındıysa ilk alış tarihi */
+  movedFrom?: string
+}
+
 export interface ImportPlan {
+  rows: PlannedRow[]
+  /** Varsayılan seçim: tekrar olmayan ve eklenebilir satırlar */
   transactions: Transaction[]
   newCategories: Category[]
   skippedDuplicates: number
@@ -197,22 +214,31 @@ const norm = (s: string) => s.toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim(
 const dupKey = (t: Pick<Transaction, 'date' | 'type' | 'amount' | 'accountId' | 'toAccountId'>) =>
   `${t.date}|${t.type}|${t.amount}|${t.accountId}|${t.toAccountId ?? ''}`
 
+const trDate = (iso: string) => iso.split('-').reverse().join('.')
+
 /**
- * İçe aktarılacak kayıtları hazırlar (veritabanına yazmaz).
+ * İçe aktarılacak kayıtları hazırlar (veritabanına yazmaz). Her dosya satırı için bir PlannedRow döner;
+ * gözden geçirme ekranı satırları tek tek açıp kapatabilir.
  * - Kategori adı eşleşmezse "Diğer"/"Diğer Gelir", o da yoksa yeni kategori.
- * - Mevcut işlemlerle aynı tarih+tür+tutar+hesap olanlar tekrar sayılır ve atlanır
- *   (her mevcut kayıt en fazla bir içe aktarma satırını eler).
+ * - Mevcut işlemlerle aynı tarih+tür+tutar+hesap olanlar `duplicate` işaretlenir
+ *   (her mevcut kayıt en fazla bir satırı işaretler).
  * - Kart ödemesi: karşı hesap seçildiyse transfer (kart ekstresinde karşı hesap → kart,
- *   banka hareketinde bu hesap → kart), seçilmediyse atlanır.
+ *   banka hareketinde bu hesap → kart), seçilmediyse `tx: null`.
+ * - Taksit (2. taksit ve sonrası) ilk alış tarihiyle gelir; ekstre döneminden bir aydan eskiyse
+ *   ekstre tarihine taşınır (yoksa dosyadaki en geç taksitsiz tarihe), alış tarihi nota yazılır.
  */
 export function planImport(items: ImportItem[], o: ImportOptions): ImportPlan {
-  const transactions: Transaction[] = []
+  const rows: PlannedRow[] = []
   const newCategories: Category[] = []
   let skippedDuplicates = 0
   let skippedPayments = 0
 
   const pool = new Map<string, number>()
   for (const t of o.existing) pool.set(dupKey(t), (pool.get(dupKey(t)) ?? 0) + 1)
+
+  const plainDates = items.filter((i) => !i.installment).map((i) => i.date).sort()
+  const instDate = o.statementDate ?? plainDates[plainDates.length - 1]
+  const oldBefore = instDate ? addMonths(instDate, -1) : undefined
 
   const cats = [...o.categories]
   let nextOrder = cats.reduce((m, c) => Math.max(m, c.sortOrder), -1) + 1
@@ -240,42 +266,59 @@ export function planImport(items: ImportItem[], o: ImportOptions): ImportPlan {
     return created.id
   }
 
-  for (const it of items) {
+  items.forEach((it, index) => {
+    let date = it.date
+    let movedFrom: string | undefined
+    if (it.installment && it.installment.no > 1 && instDate && oldBefore && it.date < oldBefore) {
+      movedFrom = it.date
+      date = instDate
+    }
+
     let base: Pick<Transaction, 'date' | 'type' | 'amount' | 'accountId' | 'toAccountId'>
     let categoryId: string | undefined
     if (it.type === 'payment') {
       const other = o.paymentCounterpartyId
       if (!other || other === o.accountId) {
         skippedPayments++
-        continue
+        rows.push({ index, item: it, tx: null, duplicate: false })
+        return
       }
       const [from, to] = o.targetIsCard === false ? [o.accountId, other] : [other, o.accountId]
-      base = { date: it.date, type: 'transfer', amount: it.amount, accountId: from, toAccountId: to }
+      base = { date, type: 'transfer', amount: it.amount, accountId: from, toAccountId: to }
     } else {
-      base = { date: it.date, type: it.type, amount: it.amount, accountId: o.accountId }
+      base = { date, type: it.type, amount: it.amount, accountId: o.accountId }
       categoryId = findCat(it.type, it.categoryName)
     }
 
     const key = dupKey(base)
     const left = pool.get(key) ?? 0
-    if (left > 0) {
+    const duplicate = left > 0
+    if (duplicate) {
       pool.set(key, left - 1)
       skippedDuplicates++
-      continue
     }
 
-    const inst = it.installment ? ` (${it.installment.no}/${it.installment.count})` : ''
+    const inst = it.installment
+      ? ` (${it.installment.no}/${it.installment.count}${movedFrom ? `, alış ${trDate(movedFrom)}` : ''})`
+      : ''
     const note = ((it.note ?? '') + inst).trim()
-    transactions.push({
-      id: o.newId(),
-      ...base,
-      currency: 'TRY',
-      categoryId,
-      note: note || undefined,
-      createdAt: o.now,
-      updatedAt: o.now,
+    rows.push({
+      index,
+      item: it,
+      duplicate,
+      movedFrom,
+      tx: {
+        id: o.newId(),
+        ...base,
+        currency: 'TRY',
+        categoryId,
+        note: note || undefined,
+        createdAt: o.now,
+        updatedAt: o.now,
+      },
     })
-  }
+  })
 
-  return { transactions, newCategories, skippedDuplicates, skippedPayments }
+  const transactions = rows.filter((r) => r.tx && !r.duplicate).map((r) => r.tx!)
+  return { rows, transactions, newCategories, skippedDuplicates, skippedPayments }
 }

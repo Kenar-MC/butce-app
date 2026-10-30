@@ -1,9 +1,9 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { useApp } from '../../components/AppContext'
 import { TxList } from '../../components/TxList'
-import { Empty, Money, MonthPicker } from '../../components/ui'
+import { Empty, Money, MonthPicker, Segmented } from '../../components/ui'
 import { db } from '../../db/db'
 import { ACCOUNT_TYPES, byId, useAccounts, useBalances, useCategories } from '../../db/hooks'
 import type { Category } from '../../db/types'
@@ -21,15 +21,20 @@ export default function AccountDetailPage() {
   const catById = byId(categories)
   const [editing, setEditing] = useState(false)
   const [catFilter, setCatFilter] = useState<string | null>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+  // İçe aktarmadan gelince tüm zamanlar açık (işlemler farklı aylara düşebilir)
+  const [range, setRange] = useState<'month' | 'all'>((location.state as { all?: boolean } | null)?.all ? 'all' : 'month')
 
   const txs = useLiveQuery(() => {
+    if (range === 'all') return db.transactions.where('accountId').equals(id).or('toAccountId').equals(id).toArray()
     const [s, e] = monthRange(month)
     return db.transactions
       .where('date')
       .between(s, e, true, true)
       .filter((t) => t.accountId === id || t.toAccountId === id)
       .toArray()
-  }, [month, id])
+  }, [month, id, range])
 
   const acc = accById[id]
   if (!acc) return accounts.length ? <Empty>Hesap bulunamadı.</Empty> : null
@@ -62,13 +67,26 @@ export default function AccountDetailPage() {
         <Money value={balances[id] ?? 0} className="text-xl font-bold" />
       </div>
 
-      <MonthPicker
-        month={month}
-        onChange={(m) => {
-          setMonth(m)
+      <Segmented
+        value={range}
+        options={[
+          ['month', 'Ay ay'],
+          ['all', 'Tüm zamanlar'],
+        ]}
+        onChange={(r) => {
+          setRange(r)
           setCatFilter(null)
         }}
       />
+      {range === 'month' && (
+        <MonthPicker
+          month={month}
+          onChange={(m) => {
+            setMonth(m)
+            setCatFilter(null)
+          }}
+        />
+      )}
 
       <Breakdown
         title="Harcamalar"
@@ -100,10 +118,10 @@ export default function AccountDetailPage() {
         )}
       </div>
       {txs && (
-        <TxList txs={shown} accById={accById} catById={catById} onPick={openTx} emptyText="Bu hesapta bu ay işlem yok." />
+        <TxList txs={shown} accById={accById} catById={catById} onPick={openTx} emptyText={range === 'all' ? 'Bu hesapta işlem yok.' : 'Bu hesapta bu ay işlem yok.'} />
       )}
 
-      {editing && <AccountSheet acc={acc} onClose={() => setEditing(false)} />}
+      {editing && <AccountSheet acc={acc} onClose={() => setEditing(false)} onDeleted={() => navigate('/hesaplar')} />}
     </div>
   )
 }
@@ -130,7 +148,7 @@ function Breakdown({
         <h2 className="font-semibold">{title}</h2>
         <Money value={total} sign={sign} className="font-semibold" />
       </div>
-      {rows.length === 0 && <p className="text-sm text-zinc-500">Bu ay yok.</p>}
+      {rows.length === 0 && <p className="text-sm text-zinc-500">Yok.</p>}
       {rows.map((r) => {
         const cat = catById[r.categoryId]
         const pct = total ? Math.round((r.amount / total) * 100) : 0
@@ -143,14 +161,16 @@ function Breakdown({
           >
             <span className="flex items-center gap-2">
               <span>{cat?.icon ?? '❔'}</span>
-              <span className="flex-1 truncate">{cat?.name ?? 'Kategorisiz'}</span>
-              <span className="text-xs text-zinc-500">
+              <span className="min-w-0 flex-1 truncate">{cat?.name ?? 'Kategorisiz'}</span>
+              <Money value={r.amount} className="font-medium" />
+            </span>
+            <span className="mt-1 flex items-center gap-2">
+              <span className="block h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: cat?.color ?? '#94a3b8' }} />
+              </span>
+              <span className="w-24 text-right text-xs text-zinc-500">
                 {r.count} işlem · %{pct}
               </span>
-              <Money value={r.amount} className="w-28 text-right font-medium" />
-            </span>
-            <span className="mt-1 block h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800">
-              <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: cat?.color ?? '#94a3b8' }} />
             </span>
           </button>
         )

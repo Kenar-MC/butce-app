@@ -9,7 +9,7 @@ import { newId, nowISO } from '../../lib/id'
 
 const TYPE_OPTIONS = Object.entries(ACCOUNT_TYPES).map(([k, v]) => [k, v.label]) as [AccountType, string][]
 
-export default function AccountSheet({ acc, onClose }: { acc?: Account; onClose: () => void }) {
+export default function AccountSheet({ acc, onClose, onDeleted }: { acc?: Account; onClose: () => void; onDeleted?: () => void }) {
   const [name, setName] = useState(acc?.name ?? '')
   const [type, setType] = useState<AccountType>(acc?.type ?? 'bank')
   // Kredi kartında kullanıcı borcu pozitif girer, negatif saklanır
@@ -45,9 +45,16 @@ export default function AccountSheet({ acc, onClose }: { acc?: Account; onClose:
     onClose()
   }
 
+  /** Hesabı ve ona bağlı tüm işlemleri (transferler dahil) siler */
   async function remove() {
-    if (acc) await db.accounts.delete(acc.id)
+    if (!acc) return
+    await db.transaction('rw', db.accounts, db.transactions, async () => {
+      const ids = await db.transactions.where('accountId').equals(acc.id).or('toAccountId').equals(acc.id).primaryKeys()
+      await db.transactions.bulkDelete(ids)
+      await db.accounts.delete(acc.id)
+    })
     onClose()
+    onDeleted?.()
   }
 
   return (
@@ -73,7 +80,9 @@ export default function AccountSheet({ acc, onClose }: { acc?: Account; onClose:
         </div>
         {error && <p className="text-sm font-medium text-rose-600">{error}</p>}
         <div className="flex flex-wrap gap-2 pt-2">
-          {acc && txCount === 0 && <ConfirmButton onConfirm={() => void remove()} />}
+          {acc && txCount !== undefined && (
+            <ConfirmButton label={txCount ? `Hesabı ve ${txCount} işlemi sil` : 'Sil'} onConfirm={() => void remove()} />
+          )}
           {acc && (
             <button type="button" className="btn-ghost" onClick={() => void setArchived(!acc.archived)}>
               {acc.archived ? 'Arşivden çıkar' : 'Arşivle'}
@@ -84,7 +93,9 @@ export default function AccountSheet({ acc, onClose }: { acc?: Account; onClose:
           </button>
         </div>
         {acc && !!txCount && (
-          <p className="text-xs text-zinc-500">Bu hesapta {txCount} işlem var; silinemez, arşivlenebilir.</p>
+          <p className="text-xs text-zinc-500">
+            Silersen bu hesaptaki {txCount} işlem de silinir (diğer hesaplarla yapılan transferler dahil). Geçmişi saklamak istersen arşivle.
+          </p>
         )}
       </form>
     </Sheet>

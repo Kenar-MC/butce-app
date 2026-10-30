@@ -45,6 +45,8 @@ export interface Transaction extends Stamped {
   installmentPlanId?: string
   installmentNo?: number
   recurringRuleId?: string
+  /** Hangi içe aktarmayla geldiği (geri almak için) */
+  importId?: string
 }
 
 export interface InstallmentPlan extends Stamped {

@@ -44,12 +44,13 @@ Her ekranda sağ altta **"+" (yeni işlem)** butonu.
 - Alanlar: ad, tür (Nakit / Banka / Kredi Kartı), açılış bakiyesi, renk
 
 ### 1.4b Hesap detayı (`/hesaplar/:id`)
-- Bakiye, ay seçici; **Harcamalar / Gelirler kategoriye göre** (tutar, işlem sayısı, %, çubuk); kategoriye dokununca liste süzülür
+- Bakiye, **Ay ay / Tüm zamanlar** seçimi + ay seçici; **Harcamalar / Gelirler kategoriye göre** (tutar, işlem sayısı, %, çubuk); kategoriye dokununca liste süzülür
 - O hesabın o aydaki işlemleri tek tek (transferler dahil); "Düzenle" hesap formunu açar
 - Hesaplar listesinde her satırda bu ayın gideri ve en çok harcanan 2 kategori
 
 ### 1.4c İçe aktar (`/ice-aktar`)
 - + düğmesinin üstündeki fotoğraf simgeli düğmeyle açılır: 1) Ekstre Okuyucu'yu aç, 2) dosyayı yükle
+- İçe aktarma panelinde **her işlem tek tek listelenir**: seç/çıkar, tarih ve kategori değiştir; zaten kayıtlı olanlar işaretli ve seçili değil. Son içe aktarma geri alınabilir (`importId`).
 - İçe aktarma panelinde işlemlerin yazılacağı hesap için "+ Yeni hesap oluştur…" (ad ve tür ekstreden önerilir); uygulanınca o hesabın detayına gidilir
 
 ### 1.5 Bütçe

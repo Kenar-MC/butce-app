@@ -113,3 +113,32 @@ describe('bakiyeler', () => {
     expect(p.transactions[0]).toMatchObject({ accountId: 'bank', toAccountId: 'card' })
   })
 })
+
+describe('gözden geçirme satırları ve taksit tarihi', () => {
+  const its = [
+    { date: '2026-10-02', type: 'expense' as const, amount: 1000, categoryName: 'Market', note: 'MIGROS' },
+    { date: '2026-05-10', type: 'expense' as const, amount: 2000, note: 'TEKNOSA', installment: { no: 6, count: 12 } },
+    { date: '2026-10-08', type: 'expense' as const, amount: 3000, note: 'MEDIAMARKT', installment: { no: 1, count: 3 } },
+    { date: '2026-10-15', type: 'payment' as const, amount: 500 },
+  ]
+  it('her dosya satırı için bir satır döner; eski taksiti ekstre tarihine taşır', () => {
+    const p = planImport(its, { ...base, accountId: 'card', statementDate: '2026-10-24', existing: [] })
+    expect(p.rows).toHaveLength(4)
+    expect(p.rows[1].tx).toMatchObject({ date: '2026-10-24', note: 'TEKNOSA (6/12, alış 10.05.2026)' })
+    expect(p.rows[1].movedFrom).toBe('2026-05-10')
+    expect(p.rows[2].tx).toMatchObject({ date: '2026-10-08', note: 'MEDIAMARKT (1/3)' })
+    expect(p.rows[3].tx).toBeNull()
+    expect(p.transactions).toHaveLength(3)
+  })
+  it('ekstre tarihi yoksa en geç taksitsiz tarihi kullanır', () => {
+    const p = planImport(its, { ...base, accountId: 'card', existing: [] })
+    expect(p.rows[1].tx?.date).toBe('2026-10-15')
+  })
+  it('tekrarı işaretler ama satırı listeden çıkarmaz', () => {
+    const existing = [{ date: '2026-10-02', type: 'expense' as const, amount: 1000, accountId: 'card' }]
+    const p = planImport(its, { ...base, accountId: 'card', existing })
+    expect(p.rows[0].duplicate).toBe(true)
+    expect(p.rows[0].tx).not.toBeNull()
+    expect(p.transactions.find((t) => t.amount === 1000)).toBeUndefined()
+  })
+})

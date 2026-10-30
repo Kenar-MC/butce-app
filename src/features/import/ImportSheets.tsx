@@ -1,21 +1,33 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useApp } from '../../components/AppContext'
 import { ConfirmButton, Money, Segmented, Sheet } from '../../components/ui'
 import { restoreBackup } from '../../db/backup'
 import { db } from '../../db/db'
 import { ACCOUNT_TYPES, useAccounts, useCategories } from '../../db/hooks'
-import type { AccountType } from '../../db/types'
+import type { AccountType, Transaction } from '../../db/types'
 import type { BackupFile } from '../../domain/backup'
 import { adjustedOpeningBalance } from '../../domain/balances'
 import { monthKey, todayISO } from '../../domain/dates'
-import { balanceTarget, matchAccount, planImport, type ImportFile } from '../../domain/importer'
+import { balanceTarget, isISODate, matchAccount, planImport, type ImportFile } from '../../domain/importer'
 import { newId, nowISO } from '../../lib/id'
 
 const dateFmt = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
 const NEW = '__new'
 const TYPE_OPTIONS = Object.entries(ACCOUNT_TYPES).map(([k, v]) => [k, v.label]) as [AccountType, string][]
+
+/** Son içe aktarma kaydı (geri almak için) */
+export interface LastImport {
+  id: string
+  at: string
+  count: number
+  accountName: string
+  /** Bakiyesi değişen hesapların önceki açılış bakiyeleri */
+  prevOpening: Record<string, number>
+}
+
+type RowEdit = { include?: boolean; categoryId?: string; date?: string }
 
 export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () => void }) {
   const allAccounts = useAccounts()
@@ -24,7 +36,6 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
   const allTx = useLiveQuery(() => db.transactions.toArray())
   const { setMonth } = useApp()
   const navigate = useNavigate()
-  const dates = useMemo(() => file.items.map((i) => i.date).sort(), [file])
   const hasItems = file.items.length > 0
 
   const cardBalance = file.balances.find((b) => b.accountType === 'credit_card')
@@ -32,23 +43,25 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
     (cardBalance && matchAccount(cardBalance, accounts)) || accounts.find((a) => a.type === 'credit_card') || accounts[0]
   const [accountId, setAccountId] = useState('')
   const [counterparty, setCounterparty] = useState('')
-  /** bakiye satırı → hesap id; '-' = güncelleme, yoksa otomatik eşleşme */
   const [picked, setPicked] = useState<Record<number, string>>({})
+  const [edits, setEdits] = useState<Record<number, RowEdit>>({})
   const [busy, setBusy] = useState(false)
 
   const target = accountId === NEW ? '' : accountId || defaultTarget?.id || ''
-  // Yeni hesap: adı ekstreden önerilir; kart ekstresi/ödeme varsa tür kredi kartı
+  const targetAcc = accounts.find((a) => a.id === target)
+  const targetIsCard = targetAcc?.type === 'credit_card'
   const looksCard = !!cardBalance || !!file.summary || file.items.some((i) => i.type === 'payment')
   const [newName, setNewName] = useState(cardBalance?.label ?? (file.statement?.bank ? `${file.statement.bank}${looksCard ? ' kart' : ''}` : ''))
   const [newType, setNewType] = useState<AccountType>(looksCard ? 'credit_card' : 'bank')
-  const targetIsCard = accounts.find((a) => a.id === target)?.type === 'credit_card'
 
+  // Satırlar dosyadaki sıraya (index) göre anahtarlanır; kimliklerin her çizimde yenilenmesi sorun değil
   const plan =
     hasItems && allTx && target
       ? planImport(file.items, {
           accountId: target,
           paymentCounterpartyId: counterparty || null,
           targetIsCard,
+          statementDate: file.summary?.statementDate,
           categories,
           existing: allTx,
           now: nowISO(),
@@ -56,53 +69,67 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
         })
       : null
 
+  const rows = (plan?.rows ?? []).map((r) => {
+    const e = edits[r.index] ?? {}
+    const include = !!r.tx && (e.include ?? !r.duplicate)
+    const tx: Transaction | null = r.tx
+      ? { ...r.tx, categoryId: e.categoryId ?? r.tx.categoryId, date: e.date && isISODate(e.date) ? e.date : r.tx.date }
+      : null
+    return { ...r, include, tx }
+  })
+  const selected = rows.filter((r) => r.include && r.tx).map((r) => r.tx!)
+  const setEdit = (i: number, e: RowEdit) => setEdits((s) => ({ ...s, [i]: { ...s[i], ...e } }))
+  const setAll = (include: boolean) =>
+    setEdits((s) => Object.fromEntries(rows.map((r) => [r.index, { ...s[r.index], include: include && !!r.tx }])))
+
   const balanceRows = file.balances.map((b, i) => {
     const choice = picked[i]
     const skip = choice === '-'
     const acc = skip ? undefined : choice ? allAccounts.find((a) => a.id === choice) : matchAccount(b, accounts)
     const asOf = b.asOf ?? todayISO()
-    const adj = acc && allTx ? adjustedOpeningBalance(acc, [...allTx, ...(plan?.transactions ?? [])], asOf, balanceTarget(b)) : null
+    const adj = acc && allTx ? adjustedOpeningBalance(acc, [...allTx, ...selected], asOf, balanceTarget(b)) : null
     return { b, i, acc, asOf, adj, skip }
   })
   const updates = balanceRows.filter((r) => r.acc && r.adj && r.adj.openingBalance !== r.acc.openingBalance)
-  const txCount = plan?.transactions.length ?? 0
-  const canCommit = txCount > 0 || updates.length > 0
+  const canCommit = selected.length > 0 || updates.length > 0
 
-  async function createTargetAccount() {
-    if (!newName.trim()) return
-    const now = nowISO()
+  async function createAccount(name: string, type: AccountType): Promise<string> {
+    const t = nowISO()
     const id = newId()
-    await db.accounts.add({ id, name: newName.trim(), type: newType, currency: 'TRY', openingBalance: 0, archived: false, createdAt: now, updatedAt: now })
-    setAccountId(id)
-  }
-
-  async function createAccount(i: number) {
-    const b = file.balances[i]
-    const now = nowISO()
-    const id = newId()
-    await db.accounts.add({ id, name: b.label, type: b.accountType, currency: 'TRY', openingBalance: 0, archived: false, createdAt: now, updatedAt: now })
-    setPicked((p) => ({ ...p, [i]: id }))
+    await db.accounts.add({ id, name: name.trim(), type, currency: 'TRY', openingBalance: 0, archived: false, createdAt: t, updatedAt: t })
+    return id
   }
 
   async function commit() {
-    if (!canCommit) return
+    if (!canCommit || busy) return
     setBusy(true)
-    await db.transaction('rw', db.accounts, db.categories, db.transactions, async () => {
-      if (plan?.newCategories.length) await db.categories.bulkAdd(plan.newCategories)
-      if (txCount) await db.transactions.bulkAdd(plan!.transactions)
+    const importId = newId()
+    const usedCats = new Set(selected.map((t) => t.categoryId))
+    const newCats = (plan?.newCategories ?? []).filter((c) => usedCats.has(c.id))
+    const record: LastImport = {
+      id: importId,
+      at: nowISO(),
+      count: selected.length,
+      accountName: targetAcc?.name ?? '',
+      prevOpening: Object.fromEntries(updates.map((r) => [r.acc!.id, r.acc!.openingBalance])),
+    }
+    await db.transaction('rw', [db.accounts, db.categories, db.transactions, db.settings], async () => {
+      if (newCats.length) await db.categories.bulkAdd(newCats)
+      if (selected.length) await db.transactions.bulkAdd(selected.map((t) => ({ ...t, importId })))
       for (const r of updates) await db.accounts.update(r.acc!.id, { openingBalance: r.adj!.openingBalance, updatedAt: nowISO() })
+      await db.settings.put({ key: 'lastImport', value: record })
     })
     onClose()
-    if (txCount) {
-      setMonth(monthKey(dates[dates.length - 1]))
-      navigate(`/hesaplar/${target}`)
+    if (selected.length) {
+      setMonth(monthKey(selected.map((t) => t.date).sort().pop()!))
+      // Tüm zamanlar: farklı aylara düşen işlemler de görünsün
+      navigate(`/hesaplar/${target}`, { state: { all: true } })
     } else navigate('/hesaplar')
   }
 
-  const sum = (t: string) => file.items.filter((i) => i.type === t).reduce((s, i) => s + i.amount, 0)
-  const count = (t: string) => file.items.filter((i) => i.type === t).length
-  const payments = count('payment')
+  const sumOf = (type: string) => selected.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0)
   const sm = file.summary
+  const payments = file.items.filter((i) => i.type === 'payment')
 
   return (
     <Sheet title="İçe aktar" onClose={onClose}>
@@ -123,16 +150,6 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
 
         {hasItems && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded-xl bg-zinc-100 p-3 dark:bg-zinc-800">
-                <div className="text-zinc-500">Gider ({count('expense')})</div>
-                <Money value={sum('expense')} sign="expense" className="font-semibold" />
-              </div>
-              <div className="rounded-xl bg-zinc-100 p-3 dark:bg-zinc-800">
-                <div className="text-zinc-500">Gelir / iade ({count('income')})</div>
-                <Money value={sum('income')} sign="income" className="font-semibold" />
-              </div>
-            </div>
             <label className="block">
               <span className="label">İşlemler hangi hesaba yazılsın?</span>
               <select className="input" value={accountId === NEW ? NEW : target} onChange={(e) => setAccountId(e.target.value)}>
@@ -151,16 +168,19 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
                   <input className="input" value={newName} placeholder="ör. DenizBank Black" onChange={(e) => setNewName(e.target.value)} />
                 </label>
                 <Segmented value={newType} options={TYPE_OPTIONS} onChange={setNewType} />
-                <button className="btn-primary w-full" disabled={!newName.trim()} onClick={() => void createTargetAccount()}>
+                <button
+                  className="btn-primary w-full"
+                  disabled={!newName.trim()}
+                  onClick={() => void createAccount(newName, newType).then(setAccountId)}
+                >
                   Hesabı oluştur
                 </button>
               </div>
             )}
-            {payments > 0 && target && (
+            {payments.length > 0 && target && (
               <label className="block">
                 <span className="label">
-                  Kart ödemesi ({payments}, <Money value={sum('payment')} />){' '}
-                  {targetIsCard ? 'hangi hesaptan yapıldı?' : 'hangi karta yapıldı?'}
+                  Kart ödemesi ({payments.length}) {targetIsCard ? 'hangi hesaptan yapıldı?' : 'hangi karta yapıldı?'}
                 </span>
                 <select className="input" value={counterparty} onChange={(e) => setCounterparty(e.target.value)}>
                   <option value="">Aktarma (atla)</option>
@@ -174,13 +194,87 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
                 </select>
               </label>
             )}
+
             {plan && (
-              <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                <strong>{txCount} işlem eklenecek.</strong>
-                {plan.skippedDuplicates > 0 && ` ${plan.skippedDuplicates} işlem zaten kayıtlı, atlanacak.`}
-                {plan.skippedPayments > 0 && ` ${plan.skippedPayments} kart ödemesi atlanacak.`}
-                {plan.newCategories.length > 0 && ` "${plan.newCategories[0].name}" kategorisi oluşturulacak.`}
-              </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="label mb-0">
+                    İşlemler: {selected.length} / {rows.length} seçili
+                  </span>
+                  <span className="flex gap-3 text-sm">
+                    <button className="text-emerald-700 dark:text-emerald-400" onClick={() => setAll(true)}>
+                      Tümü
+                    </button>
+                    <button className="text-zinc-500" onClick={() => setAll(false)}>
+                      Hiçbiri
+                    </button>
+                  </span>
+                </div>
+                <div className="flex gap-4 text-sm">
+                  <span>
+                    Gider <Money value={sumOf('expense')} sign="expense" className="font-semibold" />
+                  </span>
+                  <span>
+                    Gelir <Money value={sumOf('income')} sign="income" className="font-semibold" />
+                  </span>
+                </div>
+                <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-700">
+                  {rows.map((r) => {
+                    const kind = r.item.type === 'income' ? 'income' : 'expense'
+                    const cats = categories.filter((c) => c.kind === kind && (!c.archived || c.id === r.tx?.categoryId))
+                    return (
+                      <li key={r.index} className={`space-y-2 p-3 ${r.include ? '' : 'opacity-50'}`}>
+                        <label className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            className="mt-1 size-5 accent-emerald-600"
+                            checked={r.include}
+                            disabled={!r.tx}
+                            onChange={(e) => setEdit(r.index, { include: e.target.checked })}
+                          />
+                          <span className="min-w-0 flex-1 text-sm">
+                            <span className="block font-medium break-words">{r.tx?.note ?? r.item.note ?? 'Kart ödemesi'}</span>
+                            {r.duplicate && <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Zaten kayıtlı · </span>}
+                            {r.movedFrom && <span className="text-xs text-zinc-500">Taksit ekstre tarihine yazıldı · </span>}
+                            {!r.tx && <span className="text-xs text-zinc-500">Karşı hesabı seçince eklenir</span>}
+                          </span>
+                          {r.item.type === 'payment' ? (
+                            <Money value={r.item.amount} className="text-sm text-zinc-500" />
+                          ) : (
+                            <Money value={r.item.amount} sign={kind} className="text-sm font-semibold" />
+                          )}
+                        </label>
+                        {r.tx && (
+                          <div className="flex flex-wrap gap-2 pl-8">
+                            <input
+                              type="date"
+                              className="input min-h-9 w-auto py-1"
+                              aria-label="Tarih"
+                              value={r.tx.date}
+                              onChange={(e) => setEdit(r.index, { date: e.target.value })}
+                            />
+                            {r.tx.type !== 'transfer' && (
+                              <select
+                                className="input min-h-9 w-auto py-1"
+                                aria-label="Kategori"
+                                value={r.tx.categoryId}
+                                onChange={(e) => setEdit(r.index, { categoryId: e.target.value })}
+                              >
+                                {cats.map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.icon} {c.name}
+                                  </option>
+                                ))}
+                                {!cats.some((c) => c.id === r.tx!.categoryId) && <option value={r.tx.categoryId}>➕ Diğer (yeni)</option>}
+                              </select>
+                            )}
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
             )}
           </div>
         )}
@@ -212,7 +306,10 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
                   ))}
                 </select>
                 {!r.acc && !r.skip && (
-                  <button className="btn-ghost w-full" onClick={() => void createAccount(r.i)}>
+                  <button
+                    className="btn-ghost w-full"
+                    onClick={() => void createAccount(r.b.label, r.b.accountType).then((id) => setPicked((p) => ({ ...p, [r.i]: id })))}
+                  >
                     + “{r.b.label}” hesabını oluştur
                   </button>
                 )}
@@ -228,8 +325,10 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
           </div>
         )}
 
-        <button className="btn-primary w-full" disabled={!canCommit || busy} onClick={() => void commit()}>
-          {canCommit ? 'Uygula' : 'Değişecek bir şey yok'}
+        <button className="btn-primary sticky bottom-0 w-full shadow-lg" disabled={!canCommit || busy} onClick={() => void commit()}>
+          {canCommit
+            ? `Uygula${selected.length ? ` (${selected.length} işlem${updates.length ? ` + ${updates.length} bakiye` : ''})` : ` (${updates.length} bakiye)`}`
+            : 'Değişecek bir şey yok'}
         </button>
       </div>
     </Sheet>

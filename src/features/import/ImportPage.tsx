@@ -1,8 +1,23 @@
-import { EKSTRE_OKUYUCU_URL } from '../../db/hooks'
+import { ConfirmButton } from '../../components/ui'
+import { db } from '../../db/db'
+import { EKSTRE_OKUYUCU_URL, useSetting } from '../../db/hooks'
+import type { LastImport } from './ImportSheets'
 import { useFileImporter } from './useFileImporter'
 
 export default function ImportPage() {
   const importer = useFileImporter()
+  const last = useSetting<LastImport>('lastImport')
+
+  async function undo() {
+    if (!last) return
+    await db.transaction('rw', [db.transactions, db.accounts, db.settings], async () => {
+      const ids = await db.transactions.filter((t) => t.importId === last.id).primaryKeys()
+      await db.transactions.bulkDelete(ids)
+      for (const [id, openingBalance] of Object.entries(last.prevOpening)) await db.accounts.update(id, { openingBalance })
+      await db.settings.delete('lastImport')
+    })
+    importer.setMessage(`Son içe aktarma geri alındı (${last.count} işlem silindi).`)
+  }
   return (
     <div className="space-y-4">
       <div>
@@ -46,8 +61,19 @@ export default function ImportPage() {
         </li>
       </ol>
 
+      {last && (
+        <div className="card space-y-2">
+          <p className="text-sm">
+            Son içe aktarma: <strong>{last.count} işlem</strong>
+            {last.accountName && ` → ${last.accountName}`},{' '}
+            {new Date(last.at).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+          </p>
+          <ConfirmButton label="Son içe aktarmayı geri al" onConfirm={() => void undo()} />
+        </div>
+      )}
+
       {importer.message && (
-        <p className="text-sm font-medium text-rose-600" role="status">
+        <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300" role="status">
           {importer.message}
         </p>
       )}
