@@ -245,6 +245,7 @@ bakiye = openingBalance
 ```
 - Hepsi seçilen tek hesaba yazılır (genelde kredi kartı). `payment` → seçilen kaynak hesaptan karta transfer; kaynak seçilmezse atlanır.
 - Kategori adı eşleşmezse "Diğer"/"Diğer Gelir". Taksit bilgisi nota eklenir: `TEKNOSA (3/6)`.
+- 2. ve sonraki taksit, ekstre tarihinden bir aydan eskiyse ekstre tarihine yazılır: `MEDIAMARKT (6/12, alış 10.05.2026)`.
 - Tekrar: aynı tarih + tür + tutar + hesap olan mevcut kayıt bir satırı eler.
 - Banka hareketinde (hedef kart değilse) kart ödemesi: bu hesaptan seçilen karta transfer.
 - `balances`: her satır ad benzerliği + türle bir hesaba eşlenir (yoksa tek dokunuşla oluşturulur). Hesabın `asOf` tarihindeki bakiyesi tutara eşitlenir; fark **açılış bakiyesine** yazılır (gelir/gider raporunu etkilemez). Kartta tutar borçtur (bakiye −tutar).
