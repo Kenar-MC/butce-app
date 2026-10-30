@@ -106,6 +106,7 @@ describe('bakiyeler', () => {
     expect(matchAccount({ label: 'GARANTİ BBVA Vadesiz TL', accountType: 'bank' }, accounts)?.id).toBe('a')
     expect(matchAccount({ label: 'Yapı Kredi', accountType: 'bank' }, accounts)).toBeUndefined()
     expect(matchAccount({ label: 'Garanti kart', accountType: 'credit_card' }, accounts)?.id).toBe('c')
+    expect(matchAccount({ label: 'DenizBank Black', accountType: 'credit_card' }, accounts, { singleFallback: false })).toBeUndefined()
   })
   it('banka hareketinde kart ödemesi bu hesaptan karta gider', () => {
     const items = [{ date: '2026-10-15', type: 'payment' as const, amount: 1000 }]

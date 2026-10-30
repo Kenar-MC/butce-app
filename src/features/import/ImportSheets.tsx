@@ -82,14 +82,29 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
   const setAll = (include: boolean) =>
     setEdits((s) => Object.fromEntries(rows.map((r) => [r.index, { ...s[r.index], include: include && !!r.tx }])))
 
+  // Her bakiye ayrı bir hesaba gider: açıkça seçilenler ayrılır, kalanlar sırayla eşlenir.
+  // Aynı türden birden fazla bakiye varsa "o türde tek hesap" kestirmesi kapalı.
+  const typeCount = file.balances.reduce<Record<string, number>>((m, b) => ({ ...m, [b.accountType]: (m[b.accountType] ?? 0) + 1 }), {})
+  const used = new Set(Object.values(picked).filter((v) => v && v !== '-' && v !== NEW))
   const balanceRows = file.balances.map((b, i) => {
     const choice = picked[i]
     const skip = choice === '-'
-    const acc = skip ? undefined : choice ? allAccounts.find((a) => a.id === choice) : matchAccount(b, accounts)
+    const creating = choice === NEW
+    let acc = choice && !skip && !creating ? allAccounts.find((a) => a.id === choice) : undefined
+    if (!choice) {
+      acc = matchAccount(
+        b,
+        accounts.filter((a) => !used.has(a.id)),
+        { singleFallback: typeCount[b.accountType] === 1 },
+      )
+      if (acc) used.add(acc.id)
+    }
     const asOf = b.asOf ?? todayISO()
     const adj = acc && allTx ? adjustedOpeningBalance(acc, [...allTx, ...selected], asOf, balanceTarget(b)) : null
-    return { b, i, acc, asOf, adj, skip }
+    return { b, i, acc, asOf, adj, skip, creating: creating || (!acc && !skip) }
   })
+  const [balNames, setBalNames] = useState<Record<number, string>>({})
+  const [balTypes, setBalTypes] = useState<Record<number, AccountType>>({})
   const updates = balanceRows.filter((r) => r.acc && r.adj && r.adj.openingBalance !== r.acc.openingBalance)
   const canCommit = selected.length > 0 || updates.length > 0
 
@@ -294,10 +309,10 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
                 <select
                   className="input"
                   aria-label={`${r.b.label} için hesap`}
-                  value={r.skip ? '-' : (r.acc?.id ?? '')}
+                  value={r.skip ? '-' : r.acc ? r.acc.id : NEW}
                   onChange={(e) => setPicked((p) => ({ ...p, [r.i]: e.target.value }))}
                 >
-                  {!r.acc && !r.skip && <option value="">Eşleşen hesap yok</option>}
+                  <option value={NEW}>+ Yeni hesap oluştur…</option>
                   <option value="-">Bu bakiyeyi kullanma</option>
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -305,13 +320,33 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
                     </option>
                   ))}
                 </select>
-                {!r.acc && !r.skip && (
-                  <button
-                    className="btn-ghost w-full"
-                    onClick={() => void createAccount(r.b.label, r.b.accountType).then((id) => setPicked((p) => ({ ...p, [r.i]: id })))}
-                  >
-                    + “{r.b.label}” hesabını oluştur
-                  </button>
+                {r.creating && (
+                  <div className="space-y-2 rounded-xl border border-emerald-300 p-3 dark:border-emerald-800">
+                    <label className="block">
+                      <span className="label">Yeni hesabın adı</span>
+                      <input
+                        className="input"
+                        value={balNames[r.i] ?? r.b.label}
+                        onChange={(e) => setBalNames((n) => ({ ...n, [r.i]: e.target.value }))}
+                      />
+                    </label>
+                    <Segmented
+                      value={balTypes[r.i] ?? r.b.accountType}
+                      options={TYPE_OPTIONS}
+                      onChange={(t) => setBalTypes((m) => ({ ...m, [r.i]: t }))}
+                    />
+                    <button
+                      className="btn-primary w-full"
+                      disabled={!(balNames[r.i] ?? r.b.label).trim()}
+                      onClick={() =>
+                        void createAccount(balNames[r.i] ?? r.b.label, balTypes[r.i] ?? r.b.accountType).then((id) =>
+                          setPicked((p) => ({ ...p, [r.i]: id })),
+                        )
+                      }
+                    >
+                      Hesabı oluştur
+                    </button>
+                  </div>
                 )}
                 {r.acc && r.adj && (
                   <p className="text-sm">

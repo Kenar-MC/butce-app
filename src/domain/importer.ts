@@ -147,10 +147,15 @@ function parseBalances(raw: unknown): ImportBalance[] {
 export const balanceTarget = (b: Pick<ImportBalance, 'accountType' | 'amount'>) =>
   b.accountType === 'credit_card' ? -b.amount : b.amount
 
-/** Bakiye satırına en uygun hesabı bulur: aynı tür + ad benzerliği; tek aday varsa o */
+/**
+ * Bakiye satırına en uygun hesabı bulur: aynı tür + ad benzerliği.
+ * Ad tutmazsa ve `singleFallback` açıksa, o türde tek hesap varsa onu döner
+ * (dosyada aynı türden birden fazla bakiye varsa kapatılmalı; yoksa hepsi aynı hesaba düşer).
+ */
 export function matchAccount<A extends { id: string; name: string; type: string; archived: boolean }>(
   b: Pick<ImportBalance, 'label' | 'accountType'>,
   accounts: A[],
+  { singleFallback = true }: { singleFallback?: boolean } = {},
 ): A | undefined {
   const same = accounts.filter((a) => !a.archived && a.type === b.accountType)
   const words = norm(b.label).split(/[^\p{L}\d]+/u).filter((w) => w.length >= 3)
@@ -158,7 +163,7 @@ export function matchAccount<A extends { id: string; name: string; type: string;
     .map((a) => ({ a, score: words.filter((w) => norm(a.name).includes(w)).length }))
     .sort((x, y) => y.score - x.score)
   if (scored[0]?.score) return scored[0].a
-  return same.length === 1 ? same[0] : undefined
+  return singleFallback && same.length === 1 ? same[0] : undefined
 }
 
 function parseSummary(raw: unknown): StatementSummary | undefined {
