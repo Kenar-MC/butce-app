@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addMonths, daysInMonth, formatMonthTR, monthRange, shiftMonth } from './dates'
+import { addMonths, daysInMonth, formatMonthTR, monthRange, shiftMonth, formatDayTR } from './dates'
 
 describe('dates', () => {
   it('daysInMonth', () => {
@@ -21,5 +21,13 @@ describe('dates', () => {
   })
   it('formatMonthTR', () => {
     expect(formatMonthTR('2026-10')).toBe('Ekim 2026')
+  })
+})
+
+describe('formatDayTR', () => {
+  it('omits the year in the current year and adds it otherwise', () => {
+    expect(formatDayTR('2026-10-30', 2026)).not.toContain('2026')
+    expect(formatDayTR('2025-03-05', 2026)).toContain('2025')
+    expect(formatDayTR('2025-03-05')).not.toContain('2025')
   })
 })

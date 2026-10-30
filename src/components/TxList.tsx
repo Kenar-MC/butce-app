@@ -3,6 +3,8 @@ import { formatDayTR } from '../domain/dates'
 import { totals } from '../domain/reports'
 import { Empty, Money } from './ui'
 
+const THIS_YEAR = new Date().getFullYear()
+
 /** Güne göre gruplu işlem listesi; satıra dokununca onPick */
 export function TxList({
   txs,
@@ -29,7 +31,7 @@ export function TxList({
         return (
           <section key={date}>
             <div className="mb-1 flex justify-between px-1 text-sm text-zinc-500">
-              <span>{formatDayTR(date)}</span>
+              <span>{formatDayTR(date, THIS_YEAR)}</span>
               {day.net !== 0 && <Money value={Math.abs(day.net)} sign={day.net > 0 ? 'income' : 'expense'} />}
             </div>
             <ul className="card divide-y divide-zinc-100 p-0 dark:divide-zinc-800">

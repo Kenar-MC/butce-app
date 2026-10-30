@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { useApp } from '../../components/AppContext'
 import { TxList } from '../../components/TxList'
@@ -42,7 +42,18 @@ export default function AccountDetailPage() {
   const own = (txs ?? []).filter((t) => t.accountId === id)
   const expenses = categoryBreakdown(own, 'expense')
   const incomes = categoryBreakdown(own, 'income')
-  const shown = catFilter === null ? (txs ?? []) : (txs ?? []).filter((t) => (t.categoryId ?? '') === catFilter)
+  // Kategoriye dokununca o kategorinin işlemleri çubuğun hemen altında açılır
+  const catTxs = (cid: string) => (
+    <div className="pt-1 pb-2">
+      <TxList
+        txs={own.filter((t) => (t.categoryId ?? '') === cid)}
+        accById={accById}
+        catById={catById}
+        onPick={openTx}
+        emptyText="İşlem yok."
+      />
+    </div>
+  )
 
   return (
     <div className="space-y-4">
@@ -95,6 +106,7 @@ export default function AccountDetailPage() {
         sign="expense"
         active={catFilter}
         onPick={(c) => setCatFilter(catFilter === c ? null : c)}
+        renderOpen={catTxs}
       />
       {incomes.length > 0 && (
         <Breakdown
@@ -104,21 +116,13 @@ export default function AccountDetailPage() {
           sign="income"
           active={catFilter}
           onPick={(c) => setCatFilter(catFilter === c ? null : c)}
+          renderOpen={catTxs}
         />
       )}
 
-      <div className="flex items-center justify-between px-1">
-        <h2 className="font-semibold">
-          İşlemler{catFilter !== null && ` · ${catById[catFilter]?.name ?? 'Kategorisiz'}`}
-        </h2>
-        {catFilter !== null && (
-          <button className="text-sm text-emerald-700 dark:text-emerald-400" onClick={() => setCatFilter(null)}>
-            Tümünü göster
-          </button>
-        )}
-      </div>
+      <h2 className="px-1 font-semibold">Tüm işlemler</h2>
       {txs && (
-        <TxList txs={shown} accById={accById} catById={catById} onPick={openTx} emptyText={range === 'all' ? 'Bu hesapta işlem yok.' : 'Bu hesapta bu ay işlem yok.'} />
+        <TxList txs={txs} accById={accById} catById={catById} onPick={openTx} emptyText={range === 'all' ? 'Bu hesapta işlem yok.' : 'Bu hesapta bu ay işlem yok.'} />
       )}
 
       {editing && <AccountSheet acc={acc} onClose={() => setEditing(false)} onDeleted={() => navigate('/hesaplar')} />}
@@ -133,6 +137,7 @@ function Breakdown({
   sign,
   active,
   onPick,
+  renderOpen,
 }: {
   title: string
   rows: CategoryTotal[]
@@ -140,6 +145,7 @@ function Breakdown({
   sign: 'expense' | 'income'
   active: string | null
   onPick: (categoryId: string) => void
+  renderOpen: (categoryId: string) => ReactNode
 }) {
   const total = rows.reduce((s, r) => s + r.amount, 0)
   return (
@@ -153,10 +159,10 @@ function Breakdown({
         const cat = catById[r.categoryId]
         const pct = total ? Math.round((r.amount / total) * 100) : 0
         return (
+          <div key={r.categoryId}>
           <button
-            key={r.categoryId}
             onClick={() => onPick(r.categoryId)}
-            aria-pressed={active === r.categoryId}
+            aria-expanded={active === r.categoryId}
             className={`relative block min-h-12 w-full overflow-hidden rounded-xl bg-zinc-50 text-left dark:bg-zinc-800/60 ${active === r.categoryId ? 'ring-2 ring-emerald-500' : ''}`}
           >
             {/* Çubuk satırın tamamı: dolu kısım kategorinin payı, yazı üstünde */}
@@ -174,8 +180,11 @@ function Breakdown({
                 </span>
               </span>
               <Money value={r.amount} className="font-semibold" />
+              <span aria-hidden className={`text-zinc-400 transition-transform ${active === r.categoryId ? 'rotate-90' : ''}`}>›</span>
             </span>
           </button>
+          {active === r.categoryId && renderOpen(r.categoryId)}
+          </div>
         )
       })}
     </section>

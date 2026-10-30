@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { useApp } from '../../components/AppContext'
 import { TxList } from '../../components/TxList'
-import { Money, MonthPicker, SelectChip } from '../../components/ui'
+import { CheckChip, Money, MonthPicker, SelectChip } from '../../components/ui'
 import { db } from '../../db/db'
 import { byId, useAccounts, useCategories } from '../../db/hooks'
 import type { TxType } from '../../db/types'
@@ -20,11 +20,13 @@ export default function TransactionsPage() {
   const [accountId, setAccountId] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [q, setQ] = useState('')
+  const [allTime, setAllTime] = useState(false)
 
   const txs = useLiveQuery(() => {
+    if (allTime) return db.transactions.toArray()
     const [start, end] = monthRange(month)
     return db.transactions.where('date').between(start, end, true, true).toArray()
-  }, [month])
+  }, [month, allTime])
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLocaleLowerCase('tr')
@@ -40,7 +42,7 @@ export default function TransactionsPage() {
 
   const sum = totals(filtered)
 
-  // Kategori listesi: bu ay (seçili hesap ve türe göre) işlemi olanlar, en çok işlemden aza
+  // Kategori listesi: seçili dönemde (seçili hesap ve türe göre) işlemi olanlar, en çok işlemden aza
   const catCounts = new Map<string, number>()
   for (const t of txs ?? []) {
     if (!t.categoryId || (type && t.type !== type)) continue
@@ -54,7 +56,16 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-4">
-      <MonthPicker month={month} onChange={setMonth} />
+      {allTime ? (
+        <div className="flex min-h-11 items-center justify-between rounded-xl px-1">
+          <h1 className="text-lg font-semibold">Tüm zamanlar</h1>
+          <button className="text-sm font-medium text-emerald-700 dark:text-emerald-400" onClick={() => setAllTime(false)}>
+            Aylara dön
+          </button>
+        </div>
+      ) : (
+        <MonthPicker month={month} onChange={setMonth} />
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="card py-3">
@@ -68,6 +79,7 @@ export default function TransactionsPage() {
       </div>
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Filtreler">
+        <CheckChip label="Tüm zamanlar" checked={allTime} onChange={setAllTime} />
         <SelectChip
           label="Hesap"
           value={accountId}

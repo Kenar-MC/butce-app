@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-/* Tema: maskottan — şapka yeşili (emerald yerine), krem zemin ve sıcak nötrler (zinc yerine), altın ₺ */
+/* Tema: maskottan — şapka yeşili (emerald yerine) ve altın ₺; nötrler Tailwind'in temiz zinc'i */
 @theme {
   --color-emerald-50: #eef7ef;
   --color-emerald-100: #d6edd9;
@@ -14,17 +14,6 @@
   --color-emerald-900: #0d3a1c;
   --color-emerald-950: #072112;
 
-  --color-zinc-50: #fbf5e8;
-  --color-zinc-100: #f4ead4;
-  --color-zinc-200: #e8dbbd;
-  --color-zinc-300: #d6c59f;
-  --color-zinc-400: #a89a7c;
-  --color-zinc-500: #7c705a;
-  --color-zinc-600: #5f5545;
-  --color-zinc-700: #463e33;
-  --color-zinc-800: #26302a;
-  --color-zinc-900: #18221c;
-  --color-zinc-950: #0f1712;
 
   --color-gold-300: #ffe58a;
   --color-gold-400: #f6cb3c;
@@ -47,7 +36,7 @@
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-zinc-200 bg-[#fffdf8] p-4 dark:border-zinc-800 dark:bg-zinc-900;
+    @apply rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900;
   }
   .input {
     @apply min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-base outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 dark:border-zinc-700 dark:bg-zinc-900;

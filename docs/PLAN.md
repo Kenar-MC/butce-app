@@ -10,7 +10,8 @@
 - Ekstre Okuyucu artık özet sayfası, hesap hareketleri ve bakiye/borç ekran görüntülerini de okuyor; uygulama hesap bakiyelerini buna göre güncelliyor.
 - Hesap detayı (`/hesaplar/:id`): aylık kategori dağılımı + işlemler; İçe Aktar sayfası (`/ice-aktar`, + üstündeki fotoğraf düğmesi); içe aktarırken yeni hesap açma.
 - İçe aktarmada tek tek gözden geçirme, eski taksitleri ekstre tarihine yazma, son içe aktarmayı geri alma; hesabı işlemleriyle silme; hesap detayında tüm zamanlar.
-- **Sıradaki (istenirse):** Faz 3 (taksit planı + tekrarlayan), Faz 4 (grafik + bütçe limitleri). Ekstre Okuyucu'ya PDF desteği.
+- Görünüm (2026-10-31): maskot ikon/tema, sade nötr palet (beyaz kart, zinc gri, şapka yeşili vurgu); hesap detayında kategoriye dokununca işlemleri altında açılır; İşlemler'de "Tüm zamanlar" tik çipi (eski yıllarda gün başlığında yıl). Ekstre Okuyucu PDF okuyor.
+- **Sıradaki (istenirse):** Faz 3 (taksit planı + tekrarlayan), Faz 4 (grafik + bütçe limitleri).
 
 ## Genel bakış
 

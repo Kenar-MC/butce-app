@@ -146,3 +146,19 @@ export function SelectChip({
     </label>
   )
 }
+
+/** Tik kutulu filtre çipi (SelectChip ile aynı boyda). */
+export function CheckChip({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label
+      className={`inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-sm font-medium select-none ${
+        checked
+          ? 'border-emerald-600 bg-emerald-50 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950 dark:text-emerald-200'
+          : 'border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'
+      }`}
+    >
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-emerald-600" />
+      <span className="whitespace-nowrap">{label}</span>
+    </label>
+  )
+}

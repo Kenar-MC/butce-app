@@ -53,7 +53,11 @@ export function formatMonthTR(key: string): string {
 }
 
 /** '2026-10-30' → '30 Ekim Cuma' */
-export function formatDayTR(iso: string): string {
+const dayYearFmt = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })
+
+/** Gün başlığı; `currentYear` verilir ve tarih başka bir yıldaysa yıl da yazılır. */
+export function formatDayTR(iso: string, currentYear?: number): string {
   const [y, m, d] = parseISODate(iso)
-  return dayFmt.format(new Date(y, m - 1, d))
+  const fmt = currentYear !== undefined && y !== currentYear ? dayYearFmt : dayFmt
+  return fmt.format(new Date(y, m - 1, d))
 }
