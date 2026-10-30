@@ -251,6 +251,7 @@ bakiye = openingBalance
 - `balances`: her satır ad benzerliği + türle bir hesaba eşlenir (yoksa tek dokunuşla oluşturulur). Hesabın `asOf` tarihindeki bakiyesi tutara eşitlenir; fark **açılış bakiyesine** yazılır (gelir/gider raporunu etkilemez). Kartta tutar borçtur (bakiye −tutar).
 - `summary` bilgi amaçlıdır; kart bakiyesi yoksa **kalan toplam borçtan** (yoksa ekstre borcundan) kart bakiyesi üretilir. Kalan borç, ekstre sonrası ödeme ve harcamaları yansıtır.
 - Ekstre Okuyucu kaynağı: `tools/ekstre-okuyucu/index.html` (değişince artifact'ı da yeniden yayınla).
+- Ekstre Okuyucu girdileri: görseller (40'a kadar; Claude'a çağrı başına sınırla gruplar halinde) ve PDF. PDF sayfada pdf.js 3.11.174 (cdnjs, worker betiği ana iş parçacığında) ile açılır: metin katmanı varsa satır/sütun düzeniyle **metin** olarak gider (sayfa başına >150 karakter), yoksa sayfalar JPEG'e çevrilip görsel olarak okunur. Şifreli PDF'te sayfada şifre sorulur, saklanmaz.
 - Ekstre Okuyucu: https://claude.ai/artifact/PWM5VX9xkNTK4G1v6mxFmr (kaynak: Mehmet'in artifact'ları)
 
 ## 4. Varsayılan kategoriler

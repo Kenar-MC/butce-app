@@ -104,6 +104,10 @@ p { margin: 0; }
 @media (max-width: 560px) { .row { grid-template-columns: 24px 1fr 7.5rem; grid-template-areas: "chk desc desc" ". meta amt"; } .row .amt { align-self: start; } }
 
 footer { font-size: .85rem; color: var(--muted); }
+.thumb.doc { display: grid; place-items: center; align-content: center; gap: 4px; padding: 8px 6px; text-align: center; font-size: .72rem; line-height: 1.2; background: var(--accent-soft); word-break: break-word; }
+.thumb.doc span { font-size: 1.6rem; }
+.pwbox { display: grid; gap: 8px; border: 1px solid var(--warn); background: var(--warn-soft); border-radius: 12px; padding: 12px; }
+.pwfield { width: auto; flex: 1; min-width: 10rem; border-color: var(--line); background: var(--surface); }
 h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(--muted); }
 .balbox { display: grid; gap: 8px; }
 .balbox:empty { display: none; }
@@ -125,18 +129,27 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
 <main>
   <header style="display:grid;gap:8px">
     <h1>Ekstre Okuyucu</h1>
-    <p class="lede">Kart ekstresi, hesap hareketleri ya da bankacılık uygulamasındaki bakiye / kart borcu ekran görüntüsünü yükle. Claude işlemleri ve hesap bakiyelerini çıkarır; sen kontrol edersin, sonra Bütçe uygulamasına aktarılacak dosyayı indirirsin.</p>
+    <p class="lede">Kart ekstresinin PDF'ini ya da ekran görüntüsünü, hesap hareketlerini veya bankacılık uygulamasındaki bakiye / kart borcu ekranını yükle. Claude işlemleri ve hesap bakiyelerini çıkarır; sen kontrol edersin, sonra Bütçe uygulamasına aktarılacak dosyayı indirirsin.</p>
   </header>
 
   <section class="panel" aria-labelledby="up-h">
     <h2 id="up-h">1. Ekstreyi yükle</h2>
     <div class="drop" id="drop">
       <div>Fotoğrafları buraya bırak ya da</div>
-      <label class="btn" for="file">Fotoğraf seç</label>
-      <input id="file" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
-      <div style="font-size:.85rem">40 görsele kadar seçebilirsin (ör. ekstre özet sayfası + işlem sayfaları); çoksa gruplar halinde okunur. Ekran görüntüsü ya da düz çekilmiş fotoğraf en iyi sonucu verir.</div>
+      <label class="btn" for="file">Fotoğraf ya da PDF seç</label>
+      <input id="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple hidden>
+      <div style="font-size:.85rem">E-ekstre PDF'i (şifreliyse şifresini sorar) ya da 40 görsele kadar ekran görüntüsü seçebilirsin; çoksa bölümler halinde okunur. Ekran görüntüsü ya da düz çekilmiş fotoğraf en iyi sonucu verir.</div>
     </div>
     <div class="thumbs" id="thumbs"></div>
+    <form class="pwbox" id="pwBox" hidden>
+      <label for="pw"><strong id="pwName"></strong> şifreli. Şifresini gir:</label>
+      <div class="actions">
+        <input id="pw" type="password" autocomplete="off" class="field pwfield">
+        <button class="btn primary" type="submit">Aç</button>
+        <button class="btn" type="button" id="pwCancel">Vazgeç</button>
+      </div>
+      <p class="hint" id="pwHint"></p>
+    </form>
     <p class="privacy">Göndermeden önce kart numarası, IBAN ve adres satırlarını kırpmanı öneririm. Görseller sadece okuma için Claude'a gider, bu sayfada saklanmaz.</p>
     <div class="actions">
       <button class="btn primary" id="readBtn" disabled>Hazırlanıyor…</button>
@@ -241,6 +254,8 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
   let isExample = true;
   let meta = { bank: null, period: null };
   let files = [];
+  /** Metin katmanı olan PDF'ler: Claude'a metin olarak gider */
+  let docs = [];
   let sample = null, downloads = null, imgLimits = null, ctl = null;
 
   const $ = (id) => document.getElementById(id);
@@ -399,8 +414,10 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
   }
 
   // ---- Görseller ----
-  function addFiles(list) {
-    for (const f of list) {
+  const isPdf = (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+  async function addFiles(list) {
+    for (const f of [...list]) {
+      if (isPdf(f)) { await handlePdf(f); continue; }
       if (!/^image\/(jpeg|png|webp|gif)$/.test(f.type)) { setStatus(`${f.name}: sadece JPG, PNG ya da WebP.`, true); continue; }
       if (imgLimits && f.size > imgLimits.maxInputBytes) { setStatus(`${f.name} çok büyük; ekran görüntüsü dene.`, true); continue; }
       if (files.length >= MAX_FILES) { setStatus(`En fazla ${MAX_FILES} görsel yükleyebilirsin.`, true); break; }
@@ -408,21 +425,125 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
     }
     renderThumbs();
   }
+
+  // ---- PDF (pdf.js, sadece PDF seçilince yüklenir) ----
+  const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  const PW_HINT = 'Bankalar e-ekstre şifresi olarak genelde TC kimlik numaranın bazı hanelerini ya da doğum tarihini kullanır; e-postadaki açıklamaya bak. Şifre hiçbir yere kaydedilmez.';
+  let pdfReady = null;
+  let pendingPdf = null;
+  function loadScript(src) {
+    return new Promise((res, rej) => { const t = document.createElement('script'); t.src = src; t.onload = res; t.onerror = () => rej(new Error(src)); document.head.append(t); });
+  }
+  function loadPdfJs() {
+    pdfReady ??= (async () => {
+      await loadScript(PDFJS + 'pdf.min.js');
+      // Worker betiği normal script olarak yüklenir: pdf.js onu bulunca sayfanın içinde çalışır
+      // (bu sayfada başka siteden worker başlatılamaz)
+      await loadScript(PDFJS + 'pdf.worker.min.js');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+      return window.pdfjsLib;
+    })().catch((e) => { pdfReady = null; throw e; });
+    return pdfReady;
+  }
+  function showPassword(name, wrong) {
+    $('pwBox').hidden = false;
+    $('pwName').textContent = name;
+    $('pwHint').textContent = wrong ? 'Şifre yanlış, tekrar dene.' : PW_HINT;
+    $('pw').value = '';
+    $('pw').focus();
+  }
+  function hidePassword() { $('pwBox').hidden = true; $('pw').value = ''; pendingPdf = null; }
+  $('pwBox').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = pendingPdf, pw = $('pw').value;
+    $('pw').value = '';
+    if (f && pw) void handlePdf(f, pw).then(updateReadBtn);
+  });
+  $('pwCancel').addEventListener('click', () => { hidePassword(); setStatus(''); });
+
+  /** Sayfadaki metin parçalarını satırlara dizer; geniş boşluklar " | " olur */
+  function pageLines(items) {
+    const rows = [];
+    for (const it of items) {
+      if (!it.str || !it.str.trim()) continue;
+      const x = it.transform[4], y = it.transform[5];
+      let row = rows.find((r) => Math.abs(r.y - y) <= 2.5);
+      if (!row) { row = { y, parts: [] }; rows.push(row); }
+      row.parts.push({ x, s: it.str, w: it.width || 0 });
+    }
+    rows.sort((a, b) => b.y - a.y);
+    return rows.map((r) => {
+      r.parts.sort((a, b) => a.x - b.x);
+      let line = '', end = null;
+      for (const p of r.parts) {
+        if (end !== null) line += p.x - end > 12 ? ' | ' : p.x - end > 1 ? ' ' : '';
+        line += p.s; end = p.x + p.w;
+      }
+      return line.trim();
+    }).filter(Boolean);
+  }
+
+  async function handlePdf(f, password) {
+    setStatus(`${f.name} açılıyor…`, false, true);
+    let lib;
+    try { lib = await loadPdfJs(); } catch { setStatus('PDF okuyucu yüklenemedi; internet bağlantını kontrol edip tekrar dene.', true); return; }
+    let pdf;
+    try {
+      pdf = await lib.getDocument({ data: new Uint8Array(await f.arrayBuffer()), password, isEvalSupported: false }).promise;
+    } catch (e) {
+      if (e?.name === 'PasswordException') { pendingPdf = f; showPassword(f.name, e.code === 2); setStatus(''); return; }
+      setStatus(`${f.name} açılamadı (bozuk ya da desteklenmeyen PDF).`, true);
+      return;
+    }
+    hidePassword();
+    const pages = Math.min(pdf.numPages, MAX_FILES);
+    const out = []; let chars = 0;
+    for (let i = 1; i <= pages; i++) {
+      const lines = pageLines((await (await pdf.getPage(i)).getTextContent()).items);
+      out.push(`--- Sayfa ${i} ---`, ...lines);
+      chars += lines.join('').length;
+    }
+    if (chars / pages > 150) {
+      docs.push({ id: ++uid, name: f.name, pages, text: out.join('\n').slice(0, 200000) });
+      setStatus(`${f.name}: ${pages} sayfa, metin olarak okunacak.`);
+    } else {
+      // Taranmış PDF: metin yok, sayfalar görsele çevrilip okunur
+      let added = 0;
+      for (let i = 1; i <= pages && files.length < MAX_FILES; i++) {
+        const page = await pdf.getPage(i);
+        const scale = Math.min(2.5, 1600 / page.getViewport({ scale: 1 }).width);
+        const vp = page.getViewport({ scale });
+        const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+        await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+        const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85));
+        if (blob) { files.push(new File([blob], `${f.name.replace(/\.pdf$/i, '')}-s${i}.jpg`, { type: 'image/jpeg' })); added++; }
+      }
+      setStatus(`${f.name}: taranmış PDF, ${added} sayfa görsel olarak okunacak.`);
+    }
+    pdf.destroy();
+    renderThumbs();
+  }
+
   function renderThumbs() {
     const box = $('thumbs');
     for (const img of box.querySelectorAll('img')) URL.revokeObjectURL(img.src);
-    box.replaceChildren(...files.map((f, i) => {
+    const docCards = docs.map((d) => {
+      const rm = labelled(el('button', { type: 'button', textContent: '✕', title: 'Kaldır' }), `${d.name} kaldır`);
+      rm.onclick = () => { docs = docs.filter((x) => x !== d); renderThumbs(); };
+      return el('div', { className: 'thumb doc' }, [el('span', { textContent: '📄' }), `${d.name} · ${d.pages} s.`, rm]);
+    });
+    box.replaceChildren(...docCards, ...files.map((f, i) => {
       const rm = labelled(el('button', { type: 'button', textContent: '✕', title: 'Kaldır' }), `${i + 1}. sayfayı kaldır`);
       rm.onclick = () => { files.splice(i, 1); renderThumbs(); };
       return el('div', { className: 'thumb' }, [el('img', { src: URL.createObjectURL(f), alt: `${i + 1}. sayfa` }), rm]);
     }));
     updateReadBtn();
   }
-  $('file').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+  $('file').addEventListener('change', (e) => { const l = [...e.target.files]; e.target.value = ''; void addFiles(l); });
   const drop = $('drop');
   drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); void addFiles([...e.dataTransfer.files]); });
 
   function setStatus(msg, err = false, busy = false) {
     const s = $('status');
@@ -433,15 +554,16 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
     const b = $('readBtn');
     if (!sample || !imgLimits) return;
     const per = Math.max(1, imgLimits.maxCount);
-    const groups = Math.ceil(files.length / per);
-    b.textContent = files.length ? `${files.length} görseli oku${groups > 1 ? ` (${groups} grup)` : ''}` : 'Önce görsel seç';
-    b.disabled = !files.length || !!ctl;
+    const jobs = docs.length + Math.ceil(files.length / per);
+    const what = [docs.length && `${docs.length} PDF`, files.length && `${files.length} görsel`].filter(Boolean).join(' + ');
+    b.textContent = what ? `${what} oku${jobs > 1 ? ` (${jobs} bölüm)` : ''}` : 'Önce görsel ya da PDF seç';
+    b.disabled = !what || !!ctl;
   }
 
   // ---- Claude ile okuma ----
-  const PROMPT = `You are reading screenshots or photos from Turkish banking. They can be: a credit card statement (transaction pages and/or the summary page), an account transaction list ("hesap hareketleri"), or a banking app screen showing account balances or card debt. The images belong together, in order.
-
-Reply with ONLY this JSON (no prose):
+  const INTRO_IMG = `You are reading screenshots or photos from Turkish banking. They can be: a credit card statement (transaction pages and/or the summary page), an account transaction list ("hesap hareketleri"), or a banking app screen showing account balances or card debt. The images belong together, in order.`;
+  const INTRO_TXT = `You are reading TEXT extracted from a Turkish bank PDF: a credit card statement (ekstre), an account statement (hesap hareketleri) or similar. Each line is one printed line; columns are separated by " | ". Pages are marked "--- Sayfa N ---". Treat it exactly like the printed document.`;
+  const PROMPT_BODY = `Reply with ONLY this JSON (no prose):
 {"bank": string|null, "period": string|null,
  "summary": {"statementDate": "YYYY-MM-DD"|null, "dueDate": "YYYY-MM-DD"|null, "statementBalance": number|null, "minimumPayment": number|null, "totalDebt": number|null} | null,
  "balances": [{"label": string, "accountType": "bank"|"credit_card"|"cash", "amount": number, "asOf": "YYYY-MM-DD"|null}],
@@ -486,6 +608,7 @@ items: every money transaction row.
 - If there are no transaction rows (only a summary page or a balance screen), "items": [].
 - Do not invent rows or balances. If a digit is unclear, give your best reading. Keep the statement's order.
 Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","amount":2499.83,"direction":"debit","kind":"purchase","installmentNo":3,"installmentCount":6,"category":"Ev"}`;
+  const PROMPT = INTRO_IMG + '\n\n' + PROMPT_BODY;
 
   const ERR = {
     cancelled: 'Okuma durduruldu.',
@@ -533,18 +656,29 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","amount":24
   }
 
   // Claude'a tek çağrıda gönderilebilen görsel sayısı sınırlı: fazlası gruplara bölünüp sırayla okunur
-  async function readAll(signal) {
+  // Okuma işleri: her PDF metni bir çağrı; görseller platformun çağrı başına sınırına göre gruplanır
+  function makeJobs() {
     const per = Math.max(1, imgLimits?.maxCount ?? 5);
-    const groups = [];
-    for (let i = 0; i < files.length; i += per) groups.push(files.slice(i, i + per));
+    const jobs = docs.map((d) => ({
+      label: d.name,
+      run: (signal) => sample.json(`${INTRO_TXT}\n\n${PROMPT_BODY}\n\n--- PDF METNİ (${d.name}) ---\n${d.text}`, { signal }),
+    }));
+    for (let i = 0; i < files.length; i += per) {
+      const g = files.slice(i, i + per);
+      const note = files.length > per ? `\n\nThese are images ${i + 1}–${i + g.length} of ${files.length} from the same set (pages in order). Return only what these images show.` : '';
+      jobs.push({ label: `${i + 1}–${i + g.length}. görsel`, run: (signal) => sample.json(PROMPT + note, { images: g, signal }) });
+    }
+    return jobs;
+  }
+
+  async function readAll(signal) {
+    const jobs = makeJobs();
     const acc = { items: [], balances: [], summary: {}, bank: null, period: null };
     let failure = null;
-    for (let g = 0; g < groups.length; g++) {
-      setStatus(groups.length > 1 ? `Claude okuyor… ${g + 1}/${groups.length}. grup (her grup 20–60 sn)` : 'Claude görselleri okuyor… genelde 20–60 saniye sürer.', false, true);
-      const from = g * per + 1, to = from + groups[g].length - 1;
-      const note = groups.length > 1 ? `\n\nThese are images ${from}–${to} of ${files.length} from the same set (pages in order). Return only what these images show.` : '';
+    for (let j = 0; j < jobs.length; j++) {
+      setStatus(jobs.length > 1 ? `Claude okuyor… ${j + 1}/${jobs.length}: ${jobs[j].label} (her biri 20–60 sn)` : 'Claude okuyor… genelde 20–60 saniye sürer.', false, true);
       try {
-        const data = await sample.json(PROMPT + note, { images: groups[g], signal });
+        const data = await jobs[j].run(signal);
         if (Array.isArray(data?.items)) acc.items.push(...data.items);
         if (Array.isArray(data?.balances)) acc.balances.push(...data.balances);
         const sm = data?.summary && typeof data.summary === 'object' ? data.summary : {};
@@ -552,7 +686,7 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","amount":24
         acc.bank ??= data?.bank ?? null;
         acc.period ??= data?.period ?? null;
       } catch (e) {
-        failure = { code: e?.code ?? 'upstream_error', group: g + 1, groups: groups.length };
+        failure = { code: e?.code ?? 'upstream_error', group: j + 1, groups: jobs.length, label: jobs[j].label };
         break;
       }
     }
@@ -560,7 +694,7 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","amount":24
   }
 
   $('readBtn').addEventListener('click', async () => {
-    if (!sample || !files.length || ctl) return;
+    if (!sample || (!files.length && !docs.length) || ctl) return;
     ctl = new AbortController();
     $('stopBtn').hidden = false;
     updateReadBtn();
@@ -596,7 +730,7 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","amount":24
       const bad = rows.filter((r) => !valid(r)).length + balances.filter((b) => !validBal(b)).length;
       const what = [rows.length && `${rows.length} işlem`, balances.length && `${balances.length} bakiye`].filter(Boolean).join(', ');
       const partial = failure
-        ? ` ${failure.group}/${failure.groups}. grup ${failure.code === 'cancelled' ? 'durduruldu' : 'okunamadı'}; o gruptaki görselleri ayrıca okut.`
+        ? ` ${failure.label} ${failure.code === 'cancelled' ? 'durduruldu' : 'okunamadı'}; onu ayrıca okut.`
         : '';
       setStatus(`${what} okundu${meta.bank ? ` (${meta.bank})` : ''}.${bad ? ` ${bad} satırı kontrol et.` : ' Aşağıdan kontrol et.'}${partial}`, !!failure && failure.code !== 'cancelled');
     } finally {
@@ -670,7 +804,7 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","amount":24
     if (!sample) { setStatus('Bu görünümde Claude kullanılamıyor.', true); $('readBtn').textContent = 'Okuma kullanılamıyor'; return; }
     imgLimits = (await sample.limits().catch(() => null))?.images ?? null;
     if (!imgLimits) { setStatus('Bu görünüm Claude’a görsel gönderemiyor.', true); $('readBtn').textContent = 'Okuma kullanılamıyor'; sample = null; return; }
-    $('file').accept = imgLimits.mediaTypes.join(',');
+    $('file').accept = [...imgLimits.mediaTypes, 'application/pdf', '.pdf'].join(',');
     updateReadBtn();
   })();
 })();
