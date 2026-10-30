@@ -20,7 +20,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate', // yeni sürüm gelince kendiliğinden yüklenir ve sayfa yenilenir (src/pwa.ts)
       injectRegister: false,
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['favicon-64.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Bütçe',
         short_name: 'Bütçe',
@@ -30,8 +30,8 @@ export default defineConfig({
         scope: './',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#fafafa',
-        theme_color: '#059669',
+        background_color: '#fbf5e8',
+        theme_color: '#1f7438',
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
@@ -39,7 +39,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,webp,webmanifest}'],
+        // Büyük simgeler sadece kurulumda lazım; internetsiz önbelleğe girmesin
+        globIgnores: ['**/pwa-512.png', '**/maskable-512.png'],
         navigateFallback: 'index.html',
       },
     }),

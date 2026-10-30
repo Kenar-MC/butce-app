@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet } from 'react-router'
 import type { Transaction } from '../db/types'
 import { monthKey, todayISO } from '../domain/dates'
 import TransactionSheet from '../features/transactions/TransactionSheet'
+import mascot from '../assets/mascot.webp'
 import { AppContext } from './AppContext'
 
 const NAV = [
@@ -22,7 +23,10 @@ export default function Layout() {
     <AppContext.Provider value={ctx}>
       <div className="min-h-dvh md:flex">
         <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 border-r border-zinc-200 p-4 md:flex dark:border-zinc-800">
-          <div className="mb-4 px-3 text-lg font-bold">💰 Bütçe</div>
+          <div className="mb-4 flex items-center gap-2 px-2 text-lg font-extrabold text-emerald-800 dark:text-emerald-300">
+            <img src={mascot} alt="" className="size-9 rounded-xl" />
+            Bütçe
+          </div>
           {NAV.map((n) => (
             <NavLink
               key={n.to}
@@ -74,7 +78,7 @@ export default function Layout() {
         <button
           aria-label="Yeni işlem"
           onClick={() => setSheet({})}
-          className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 grid size-14 place-items-center rounded-full bg-emerald-600 text-3xl text-white shadow-lg hover:bg-emerald-700 active:scale-95 md:right-8 md:bottom-8"
+          className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 grid size-14 place-items-center rounded-full bg-emerald-600 text-4xl font-bold text-gold-300 shadow-lg ring-2 ring-emerald-900/40 hover:bg-emerald-700 active:scale-95 md:right-8 md:bottom-8"
         >
           +
         </button>

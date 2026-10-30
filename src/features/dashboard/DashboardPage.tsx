@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
+import mascot from '../../assets/mascot.webp'
 import { Link } from 'react-router'
 import { useApp } from '../../components/AppContext'
 import { Money, MonthPicker } from '../../components/ui'
@@ -26,6 +27,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <img src={mascot} alt="Bütçe maskotu" className="size-16 shrink-0 rounded-2xl shadow-md ring-2 ring-emerald-800/20" />
+        <div className="min-w-0">
+          <div className="text-xl font-extrabold tracking-tight text-emerald-800 dark:text-emerald-300">Bütçe</div>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{quip(sum, txs?.length ?? 0)}</p>
+        </div>
+      </div>
+
       <MonthPicker month={month} onChange={setMonth} />
 
       {needBackup && (
@@ -73,4 +82,13 @@ export default function DashboardPage() {
 
     </div>
   )
+}
+
+/** Maskotun ayın durumuna göre lafı */
+function quip(sum: { income: number; expense: number }, count: number): string {
+  if (!count) return 'Bu ay boş. Hadi, ilk harcamanı gir 👆'
+  if (sum.income > 0 && sum.expense > sum.income) return 'Bu ay giderin gelirini geçti. Sana diyorum! 👆'
+  if (sum.income === 0 && sum.expense > 0) return 'Harcama var, gelir yok. Gözüm üstünde 👀'
+  if (sum.expense > sum.income * 0.8) return 'Sınırdasın, frene bas biraz.'
+  return 'Şimdilik iyi gidiyorsun. Böyle devam ✨'
 }

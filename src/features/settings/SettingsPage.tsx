@@ -4,6 +4,7 @@ import { db } from '../../db/db'
 import { useCategories } from '../../db/hooks'
 import type { Category, CategoryKind } from '../../db/types'
 import { newId, nowISO } from '../../lib/id'
+import mascot from '../../assets/mascot.webp'
 import DataSection from './DataSection'
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b']
@@ -47,6 +48,7 @@ export default function SettingsPage() {
 
       <DataSection />
 
+      <img src={mascot} alt="" className="mx-auto size-12 rounded-xl opacity-90" />
       <p className="pb-2 text-center text-xs text-zinc-400">
         Sürüm {__APP_VERSION__} · {new Date(__BUILD_DATE__).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
       </p>
