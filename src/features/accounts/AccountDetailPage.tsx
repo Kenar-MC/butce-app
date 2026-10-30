@@ -143,7 +143,7 @@ function Breakdown({
 }) {
   const total = rows.reduce((s, r) => s + r.amount, 0)
   return (
-    <section className="card space-y-1">
+    <section className="card space-y-2">
       <div className="mb-2 flex items-baseline justify-between">
         <h2 className="font-semibold">{title}</h2>
         <Money value={total} sign={sign} className="font-semibold" />
@@ -157,20 +157,23 @@ function Breakdown({
             key={r.categoryId}
             onClick={() => onPick(r.categoryId)}
             aria-pressed={active === r.categoryId}
-            className={`block w-full rounded-xl px-2 py-2 text-left ${active === r.categoryId ? 'bg-emerald-50 dark:bg-emerald-950' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+            className={`relative block min-h-12 w-full overflow-hidden rounded-xl bg-zinc-50 text-left dark:bg-zinc-800/60 ${active === r.categoryId ? 'ring-2 ring-emerald-500' : ''}`}
           >
-            <span className="flex items-center gap-2">
-              <span>{cat?.icon ?? '❔'}</span>
-              <span className="min-w-0 flex-1 truncate">{cat?.name ?? 'Kategorisiz'}</span>
-              <Money value={r.amount} className="font-medium" />
-            </span>
-            <span className="mt-1 flex items-center gap-2">
-              <span className="block h-1.5 flex-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
-                <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: cat?.color ?? '#94a3b8' }} />
+            {/* Çubuk satırın tamamı: dolu kısım kategorinin payı, yazı üstünde */}
+            <span
+              aria-hidden
+              className="absolute inset-y-0 left-0 rounded-xl"
+              style={{ width: `${Math.max(pct, 2)}%`, background: `${cat?.color ?? '#94a3b8'}40` }}
+            />
+            <span className="relative flex items-center gap-2 px-3 py-2.5">
+              <span className="text-lg">{cat?.icon ?? '❔'}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{cat?.name ?? 'Kategorisiz'}</span>
+                <span className="block text-xs text-zinc-600 dark:text-zinc-400">
+                  {r.count} işlem · %{pct}
+                </span>
               </span>
-              <span className="w-24 text-right text-xs text-zinc-500">
-                {r.count} işlem · %{pct}
-              </span>
+              <Money value={r.amount} className="font-semibold" />
             </span>
           </button>
         )
