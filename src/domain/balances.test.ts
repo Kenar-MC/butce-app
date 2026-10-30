@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeBalances } from './balances'
+import { adjustedOpeningBalance, computeBalances } from './balances'
 import { totals } from './reports'
 
 const accounts = [
@@ -20,5 +20,19 @@ describe('balances', () => {
   })
   it('totals transferi saymaz', () => {
     expect(totals(txs.slice(0, 4))).toEqual({ income: 5000, expense: 32000, net: -27000 })
+  })
+})
+
+describe('adjustedOpeningBalance', () => {
+  it('bakiyeyi hedefe eşitleyen açılış bakiyesini bulur', () => {
+    const card = { id: 'card', openingBalance: -50000 }
+    const r = adjustedOpeningBalance(card, txs, '2026-10-30', -1234550)
+    expect(r.current).toBe(-76000)
+    expect(computeBalances([{ ...card, openingBalance: r.openingBalance }], txs, '2026-10-30').card).toBe(-1234550)
+  })
+  it('tarihten sonraki işlemleri hesaba katmaz', () => {
+    const r = adjustedOpeningBalance({ id: 'card', openingBalance: 0 }, txs, '2026-10-02', -1000)
+    expect(r.current).toBe(0)
+    expect(r.openingBalance).toBe(-1000)
   })
 })

@@ -22,3 +22,17 @@ export function computeBalances(
   }
   return bal
 }
+
+/**
+ * Hesabın `asOf` tarihindeki bakiyesi `target` olsun diye gereken yeni açılış bakiyesi.
+ * Fark açılış bakiyesine yazılır; gelir/gider raporlarını etkilemez.
+ */
+export function adjustedOpeningBalance(
+  account: Pick<Account, 'id' | 'openingBalance'>,
+  txs: Pick<Transaction, 'type' | 'amount' | 'date' | 'accountId' | 'toAccountId'>[],
+  asOf: string,
+  target: number,
+): { current: number; openingBalance: number } {
+  const current = computeBalances([account], txs, asOf)[account.id] ?? account.openingBalance
+  return { current, openingBalance: account.openingBalance + (target - current) }
+}

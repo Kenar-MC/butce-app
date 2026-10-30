@@ -7,6 +7,7 @@
 - **Şu an:** Faz 0–2 + "telefonda kullanım" paketi tamam (2026-10-30). Mehmet'in önceliği: mevcut özelliklerle iPhone'da düzgün çalışması; Faz 3–4 sonra.
 - Yayın: GitHub Pages (`Kenar-MC/butce-app`, main'e push → otomatik yayın). iPhone'da Safari → Paylaş → Ana Ekrana Ekle.
 - Ek olarak yapılanlar: ekstreden içe aktarma (Ekstre Okuyucu artifact'ı → JSON → Ayarlar › Veri › Dosya yükle), yedek al/geri yükle, PWA (offline, ikon), son kullanılan hesabı hatırlama, yedek hatırlatma bandı, Özet'te basit kartlar.
+- Ekstre Okuyucu artık özet sayfası, hesap hareketleri ve bakiye/borç ekran görüntülerini de okuyor; uygulama hesap bakiyelerini buna göre güncelliyor.
 - **Sıradaki (istenirse):** Faz 3 (taksit planı + tekrarlayan), Faz 4 (grafik + bütçe limitleri). Ekstre Okuyucu'ya PDF desteği.
 
 ## Genel bakış

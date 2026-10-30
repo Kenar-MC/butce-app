@@ -227,12 +227,19 @@ bakiye = openingBalance
 ```json
 { "app": "butce-app", "kind": "import", "version": 1, "source": "ekstre-okuyucu",
   "statement": { "bank": "Garanti BBVA", "period": "Ekim 2026" },
+  "summary": { "statementDate": "2026-10-25", "dueDate": "2026-11-05", "statementBalance": 1234550,
+               "minimumPayment": 246910, "totalDebt": 2049850 },
+  "balances": [ { "label": "Garanti Vadesiz TL", "accountType": "bank|credit_card|cash", "amount": 4500000, "asOf": "2026-10-30" } ],
   "items": [ { "date": "2026-10-08", "type": "expense|income|payment", "amount": 249983,
                "categoryName": "Ev", "note": "TEKNOSA", "installment": { "no": 3, "count": 6 } } ] }
 ```
 - Hepsi seçilen tek hesaba yazılır (genelde kredi kartı). `payment` → seçilen kaynak hesaptan karta transfer; kaynak seçilmezse atlanır.
 - Kategori adı eşleşmezse "Diğer"/"Diğer Gelir". Taksit bilgisi nota eklenir: `TEKNOSA (3/6)`.
 - Tekrar: aynı tarih + tür + tutar + hesap olan mevcut kayıt bir satırı eler.
+- Banka hareketinde (hedef kart değilse) kart ödemesi: bu hesaptan seçilen karta transfer.
+- `balances`: her satır ad benzerliği + türle bir hesaba eşlenir (yoksa tek dokunuşla oluşturulur). Hesabın `asOf` tarihindeki bakiyesi tutara eşitlenir; fark **açılış bakiyesine** yazılır (gelir/gider raporunu etkilemez). Kartta tutar borçtur (bakiye −tutar).
+- `summary` bilgi amaçlıdır; kart bakiyesi yoksa dönem borcundan (yoksa toplam borçtan) kart bakiyesi üretilir.
+- Ekstre Okuyucu kaynağı: `tools/ekstre-okuyucu/index.html` (değişince artifact'ı da yeniden yayınla).
 - Ekstre Okuyucu: https://claude.ai/artifact/PWM5VX9xkNTK4G1v6mxFmr (kaynak: Mehmet'in artifact'ları)
 
 ## 4. Varsayılan kategoriler

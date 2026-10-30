@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Category } from '../db/types'
-import { detectKind, parseImportFile, planImport } from './importer'
+import { detectKind, matchAccount, parseImportFile, planImport } from './importer'
 
 const cat = (id: string, name: string, kind: 'expense' | 'income', archived = false): Category => ({
   id, name, kind, icon: '', color: '', archived, sortOrder: 0, createdAt: '', updatedAt: '',
@@ -52,7 +52,7 @@ describe('planImport', () => {
   })
 
   it('ödemeyi kaynak hesaptan karta transfer yapar', () => {
-    const p = planImport(items, { ...base, accountId: 'card', paymentFromAccountId: 'bank', existing: [] })
+    const p = planImport(items, { ...base, accountId: 'card', paymentCounterpartyId: 'bank', existing: [] })
     expect(p.transactions.find((t) => t.type === 'transfer')).toMatchObject({ accountId: 'bank', toAccountId: 'card', amount: 1850000 })
   })
 
@@ -69,5 +69,47 @@ describe('planImport', () => {
     expect(p.newCategories).toHaveLength(1)
     expect(p.newCategories[0].name).toBe('Diğer')
     expect(new Set(p.transactions.map((t) => t.categoryId)).size).toBe(1)
+  })
+})
+
+describe('ekstre özeti', () => {
+  const head = { app: 'butce-app', kind: 'import', version: 1 }
+  it('sadece özet içeren dosyayı kabul eder', () => {
+    const f = parseImportFile({ ...head, items: [], statement: { bank: 'Garanti' }, summary: { statementDate: '2026-10-25', dueDate: '2026-11-05', statementBalance: 1234550, minimumPayment: 246910, totalDebt: 2000000 } })
+    if (typeof f === 'string') throw new Error(f)
+    expect(f.items).toHaveLength(0)
+    expect(f.balances).toEqual([{ label: 'Garanti kart', accountType: 'credit_card', amount: 1234550, asOf: '2026-10-25' }])
+    expect(f.summary).toEqual({ statementDate: '2026-10-25', dueDate: '2026-11-05', statementBalance: 1234550, minimumPayment: 246910, totalDebt: 2000000 })
+  })
+  it('geçersiz özet alanlarını atar; ne satır ne borç varsa reddeder', () => {
+    const f = parseImportFile({ ...head, items: [], summary: { statementBalance: 12.5, totalDebt: 500, dueDate: '5 Kasım' } })
+    if (typeof f === 'string') throw new Error(f)
+    expect(f.summary).toEqual({ totalDebt: 500 })
+    expect(typeof parseImportFile({ ...head, items: [], summary: { minimumPayment: 100 } })).toBe('string')
+  })
+})
+
+describe('bakiyeler', () => {
+  const head = { app: 'butce-app', kind: 'import', version: 1 }
+  it('geçerli bakiye satırlarını alır', () => {
+    const f = parseImportFile({ ...head, items: [], balances: [
+      { label: 'Garanti Vadesiz ...1234', accountType: 'bank', amount: 4500000, asOf: '2026-10-30' },
+      { label: '', accountType: 'bank', amount: 1 },
+      { label: 'X', accountType: 'gold', amount: 1 },
+    ] })
+    if (typeof f === 'string') throw new Error(f)
+    expect(f.balances).toHaveLength(1)
+  })
+  it('hesap eşler: ad benzerliği, yoksa türde tek hesap', () => {
+    const acc = (id: string, name: string, type: string) => ({ id, name, type, archived: false })
+    const accounts = [acc('a', 'Garanti Vadesiz', 'bank'), acc('b', 'Ziraat', 'bank'), acc('c', 'Bonus Kart', 'credit_card')]
+    expect(matchAccount({ label: 'GARANTİ BBVA Vadesiz TL', accountType: 'bank' }, accounts)?.id).toBe('a')
+    expect(matchAccount({ label: 'Yapı Kredi', accountType: 'bank' }, accounts)).toBeUndefined()
+    expect(matchAccount({ label: 'Garanti kart', accountType: 'credit_card' }, accounts)?.id).toBe('c')
+  })
+  it('banka hareketinde kart ödemesi bu hesaptan karta gider', () => {
+    const items = [{ date: '2026-10-15', type: 'payment' as const, amount: 1000 }]
+    const p = planImport(items, { ...base, accountId: 'bank', paymentCounterpartyId: 'card', targetIsCard: false, existing: [] })
+    expect(p.transactions[0]).toMatchObject({ accountId: 'bank', toAccountId: 'card' })
   })
 })
