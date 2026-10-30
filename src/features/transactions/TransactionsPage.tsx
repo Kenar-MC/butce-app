@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { useApp } from '../../components/AppContext'
 import { TxList } from '../../components/TxList'
-import { Money, MonthPicker } from '../../components/ui'
+import { Money, MonthPicker, SelectChip } from '../../components/ui'
 import { db } from '../../db/db'
 import { byId, useAccounts, useCategories } from '../../db/hooks'
 import type { TxType } from '../../db/types'
@@ -51,7 +51,6 @@ export default function TransactionsPage() {
   const catOptions = [...catCounts.entries()]
     .filter(([id]) => catById[id])
     .sort((a, b) => b[1] - a[1] || catById[a[0]].name.localeCompare(catById[b[0]].name, 'tr'))
-  const sel = 'input min-h-10 w-auto shrink-0 py-1' // iOS'ta 16px altı yazı odaklanınca ekranı yakınlaştırır
 
   return (
     <div className="space-y-4">
@@ -68,29 +67,30 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        <select className={sel} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-          <option value="">Tüm hesaplar</option>
-          {accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-        <select className={sel} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-          <option value="">Tüm kategoriler</option>
-          {catOptions.map(([id, n]) => (
-            <option key={id} value={id}>
-              {catById[id].icon} {catById[id].name} ({n})
-            </option>
-          ))}
-        </select>
-        <select className={sel} value={type} onChange={(e) => setType(e.target.value as TxType | '')}>
-          <option value="">Tüm türler</option>
-          <option value="expense">Gider</option>
-          <option value="income">Gelir</option>
-          <option value="transfer">Transfer</option>
-        </select>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Filtreler">
+        <SelectChip
+          label="Hesap"
+          value={accountId}
+          onChange={setAccountId}
+          options={[['', 'Tüm hesaplar'], ...accounts.map((a): [string, string] => [a.id, a.name])]}
+        />
+        <SelectChip
+          label="Kategori"
+          value={categoryId}
+          onChange={setCategoryId}
+          options={[['', 'Tüm kategoriler'], ...catOptions.map(([id, n]): [string, string] => [id, `${catById[id].icon} ${catById[id].name} (${n})`])]}
+        />
+        <SelectChip
+          label="Tür"
+          value={type}
+          onChange={(v) => setType(v as TxType | '')}
+          options={[
+            ['', 'Tüm türler'],
+            ['expense', 'Gider'],
+            ['income', 'Gelir'],
+            ['transfer', 'Transfer'],
+          ]}
+        />
       </div>
       <input className="input" type="search" placeholder="Notlarda ara…" value={q} onChange={(e) => setQ(e.target.value)} />
 

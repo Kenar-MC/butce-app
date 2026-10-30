@@ -105,3 +105,44 @@ export function AmountInput({ value, onChange, autoFocus }: { value: string; onC
     </div>
   )
 }
+
+/**
+ * Yazı kadar genişleyen filtre düğmesi. iOS'ta <select> en uzun seçenek kadar genişlediği için
+ * görünür kısım bir etiket; dokununca üstündeki görünmez yerel <select> açılır.
+ */
+export function SelectChip({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: [string, string][]
+  onChange: (v: string) => void
+}) {
+  const current = options.find(([v]) => v === value)?.[1] ?? options[0]?.[1] ?? ''
+  const active = value !== ''
+  return (
+    <label
+      className={`relative inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium ${active ? 'border-emerald-600 bg-emerald-50 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950 dark:text-emerald-200' : 'border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'}`}
+    >
+      <span className="whitespace-nowrap">{current}</span>
+      <span aria-hidden className="text-xs opacity-60">
+        ▾
+      </span>
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 h-full w-full cursor-pointer text-base opacity-0"
+      >
+        {options.map(([v, l]) => (
+          <option key={v} value={v}>
+            {l}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
