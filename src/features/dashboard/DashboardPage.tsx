@@ -1,9 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { useApp } from '../../components/AppContext'
 import { Money, MonthPicker } from '../../components/ui'
 import { db } from '../../db/db'
-import { ACCOUNT_TYPES, useAccounts, useBalances } from '../../db/hooks'
+import { ACCOUNT_TYPES, useAccounts, useBalances, useSetting } from '../../db/hooks'
 import { monthRange } from '../../domain/dates'
 import { totals } from '../../domain/reports'
 
@@ -17,10 +18,25 @@ export default function DashboardPage() {
   }, [month])
   const sum = totals(txs ?? [])
   const total = accounts.reduce((s, a) => s + (balances[a.id] ?? 0), 0)
+  const lastBackupAt = useSetting<string>('lastBackupAt')
+  const txCount = useLiveQuery(() => db.transactions.count()) ?? 0
+  const [now] = useState(() => Date.now())
+  const backupDays = lastBackupAt ? Math.floor((now - new Date(lastBackupAt).getTime()) / 86_400_000) : null
+  const needBackup = txCount > 0 && (backupDays === null || backupDays >= 14)
 
   return (
     <div className="space-y-4">
       <MonthPicker month={month} onChange={setMonth} />
+
+      {needBackup && (
+        <Link to="/ayarlar" className="card flex items-center gap-3 border-amber-300 bg-amber-50 py-3 text-sm dark:border-amber-800 dark:bg-amber-950">
+          <span className="text-xl">💾</span>
+          <span className="flex-1">
+            {backupDays === null ? 'Henüz yedek almadın.' : `Son yedek ${backupDays} gün önce.`} Veriler sadece bu cihazda; yedek almak için dokun.
+          </span>
+          <span aria-hidden>›</span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="card">
@@ -55,7 +71,6 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <p className="text-center text-sm text-zinc-500">Grafikler ve bütçe durumu Faz 4'te eklenecek.</p>
     </div>
   )
 }

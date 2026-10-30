@@ -34,3 +34,10 @@ export function useBalances(accounts: Account[]): Record<string, number> {
   const txs = useLiveQuery(() => db.transactions.toArray())
   return computeBalances(accounts, txs ?? EMPTY, todayISO())
 }
+
+/** Ayarlar tablosundan tek bir değer (yüklenene kadar undefined) */
+export function useSetting<T>(key: string): T | undefined {
+  return useLiveQuery(async () => (await db.settings.get(key))?.value as T | undefined, [key])
+}
+
+export const EKSTRE_OKUYUCU_URL = 'https://claude.ai/artifact/PWM5VX9xkNTK4G1v6mxFmr'

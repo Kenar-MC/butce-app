@@ -223,6 +223,18 @@ bakiye = openingBalance
 
 ---
 
+### 3.8 İçe aktarma dosyası (Ekstre Okuyucu → uygulama)
+```json
+{ "app": "butce-app", "kind": "import", "version": 1, "source": "ekstre-okuyucu",
+  "statement": { "bank": "Garanti BBVA", "period": "Ekim 2026" },
+  "items": [ { "date": "2026-10-08", "type": "expense|income|payment", "amount": 249983,
+               "categoryName": "Ev", "note": "TEKNOSA", "installment": { "no": 3, "count": 6 } } ] }
+```
+- Hepsi seçilen tek hesaba yazılır (genelde kredi kartı). `payment` → seçilen kaynak hesaptan karta transfer; kaynak seçilmezse atlanır.
+- Kategori adı eşleşmezse "Diğer"/"Diğer Gelir". Taksit bilgisi nota eklenir: `TEKNOSA (3/6)`.
+- Tekrar: aynı tarih + tür + tutar + hesap olan mevcut kayıt bir satırı eler.
+- Ekstre Okuyucu: https://claude.ai/artifact/PWM5VX9xkNTK4G1v6mxFmr (kaynak: Mehmet'in artifact'ları)
+
 ## 4. Varsayılan kategoriler
 
 **Gider:** 🛒 Market · 🍽️ Yeme-İçme · 🚌 Ulaşım · ⛽ Akaryakıt · 🏠 Kira · 💡 Faturalar · 📱 Telefon/İnternet · 🔁 Abonelikler · 🏥 Sağlık · 🎓 Eğitim · 👕 Giyim · 🎉 Eğlence · 🏋️ Spor · 🛋️ Ev · 💈 Kişisel Bakım · 🎁 Hediye · ➕ Diğer

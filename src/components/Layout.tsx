@@ -38,7 +38,7 @@ export default function Layout() {
           ))}
         </aside>
 
-        <main className="mx-auto w-full max-w-3xl px-4 pt-4 pb-28 md:pb-10">
+        <main className="mx-auto w-full max-w-3xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 md:pb-10">
           <Outlet />
         </main>
 

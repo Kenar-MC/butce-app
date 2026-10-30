@@ -29,6 +29,8 @@ Uzun vadede:
 | K5 | Teknoloji | React + Vite + TypeScript, Tailwind CSS v4, Dexie.js, React Router, Vitest, oxlint; sonra Recharts, vite-plugin-pwa. Tarih için kütüphane yok (`Intl`) | Mehmet React/Vite biliyor; TS para hesaplarında hatayı azaltır |
 | K6 | Para tutarı | Tutarlar **tam sayı kuruş** olarak saklanır (`12550` = 125,50 ₺), asla float | Yuvarlama hatalarını önler |
 | K7 | Yayınlama | İlk aşama lokal (`npm run dev`). Dışarı açılırsa **statik hosting** (Cloudflare Pages / Netlify / GitHub Pages) | Backend olmadığı için sunucu maliyeti yok, sunucuda kullanıcı verisi yok |
+| K9 | Yayın | **GitHub Pages**, `Kenar-MC/butce-app` (public; kod açık, veri cihazda) → https://kenar-mc.github.io/butce-app/ | main'e her push otomatik yayın; adres değişirse cihazdaki veri taşınmaz (yedekle taşınır) |
+| K10 | Ekstre okuma | Ayrı bir claude.ai artifact'ı (**Ekstre Okuyucu**) Claude'a fotoğrafı okutur, `kind:"import"` JSON verir; uygulama bu dosyayı içe aktarır | API anahtarı ve ek ücret yok, kullanım claude.ai aboneliğinden; uygulama offline kalır |
 | K8 | Yönlendirme | `HashRouter` (`/#/islemler`) + `base: './'` | Her statik hostta ayarsız çalışır |
 
 ## 4. IndexedDB nasıl çalışır? (K2'nin sonuçları)
@@ -46,6 +48,7 @@ Uzun vadede:
 - Kullanıcı hesabı, giriş, sunucu, senkronizasyon
 - Banka entegrasyonu / otomatik ekstre çekme
 - Aktif çoklu döviz (altyapı hazır ama arayüzde yok)
+- iPhone notu: Ana ekrana eklenen uygulamanın verisi Safari sekmesinden ayrıdır; hep ana ekran ikonundan kullan
 - Varlık takibi ve piyasa verisi
 - Paylaşımlı/aile bütçesi
 

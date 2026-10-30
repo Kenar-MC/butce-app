@@ -45,7 +45,7 @@ export default function TransactionsPage() {
   }, [filtered])
 
   const sum = totals(filtered)
-  const sel = 'input min-h-10 w-auto shrink-0 py-1 text-sm'
+  const sel = 'input min-h-10 w-auto shrink-0 py-1' // iOS'ta 16px altı yazı odaklanınca ekranı yakınlaştırır
 
   return (
     <div className="space-y-4">

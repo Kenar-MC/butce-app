@@ -4,6 +4,7 @@ import { db } from '../../db/db'
 import { useCategories } from '../../db/hooks'
 import type { Category, CategoryKind } from '../../db/types'
 import { newId, nowISO } from '../../lib/id'
+import DataSection from './DataSection'
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b']
 const KINDS: [CategoryKind, string][] = [
@@ -44,9 +45,7 @@ export default function SettingsPage() {
         </ul>
       </section>
 
-      <section className="card text-sm text-zinc-500">
-        Yedekleme, tekrarlayan işlemler ve taksit planları sonraki sürümlerde burada olacak.
-      </section>
+      <DataSection />
 
       {editing && <CategorySheet cat={editing.cat} kind={kind} sortOrder={list.length} onClose={() => setEditing(null)} />}
     </div>

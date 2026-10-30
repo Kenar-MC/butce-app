@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AmountInput, ConfirmButton, Segmented, Sheet } from '../../components/ui'
 import { db } from '../../db/db'
-import { useAccounts, useCategories } from '../../db/hooks'
+import { useAccounts, useCategories, useSetting } from '../../db/hooks'
 import type { Transaction, TxType } from '../../db/types'
 import { todayISO } from '../../domain/dates'
 import { parseAmount, toInputString } from '../../domain/money'
@@ -29,7 +29,10 @@ export default function TransactionSheet({ tx, onClose }: { tx?: Transaction; on
   // Arşivli hesap/kategori sadece bu işlemde zaten seçiliyse görünür
   const activeAccounts = accounts.filter((a) => !a.archived || a.id === tx?.accountId || a.id === tx?.toAccountId)
   const kindCats = categories.filter((c) => c.kind === type && (!c.archived || c.id === tx?.categoryId))
-  const fromId = accountId || activeAccounts[0]?.id || ''
+  // Yeni işlemde son kullanılan hesap seçili gelir
+  const lastAccountId = useSetting<string>('lastAccountId')
+  const remembered = activeAccounts.find((a) => a.id === lastAccountId && !a.archived)?.id
+  const fromId = accountId || remembered || activeAccounts[0]?.id || ''
 
   async function save() {
     const value = parseAmount(amount)
@@ -53,6 +56,7 @@ export default function TransactionSheet({ tx, onClose }: { tx?: Transaction; on
       updatedAt: now,
     }
     await db.transactions.put(record)
+    if (!tx) await db.settings.put({ key: 'lastAccountId', value: fromId })
     onClose()
   }
 

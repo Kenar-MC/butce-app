@@ -4,9 +4,10 @@
 > Görev bitince `[ ]` → `[x]` yapılır. Detaylar için `SPEC.md`.
 
 ## Durum
-- **Şu an:** Faz 0–2 tamam (v0.1.0-alpha, 2026-10-30). **Sıradaki: Faz 3** (taksit + tekrarlayan).
-- Faz 2'den öne alınanlar: Özet'te basit gelir/gider/net kartları ve hesap bakiyeleri (grafikler yine Faz 4).
-- Bilinen eksik: yeni işlem formunda hesap hep ilk hesapla açılıyor (son kullanılanı hatırlamıyor) → Fikir havuzu.
+- **Şu an:** Faz 0–2 + "telefonda kullanım" paketi tamam (2026-10-30). Mehmet'in önceliği: mevcut özelliklerle iPhone'da düzgün çalışması; Faz 3–4 sonra.
+- Yayın: GitHub Pages (`Kenar-MC/butce-app`, main'e push → otomatik yayın). iPhone'da Safari → Paylaş → Ana Ekrana Ekle.
+- Ek olarak yapılanlar: ekstreden içe aktarma (Ekstre Okuyucu artifact'ı → JSON → Ayarlar › Veri › Dosya yükle), yedek al/geri yükle, PWA (offline, ikon), son kullanılan hesabı hatırlama, yedek hatırlatma bandı, Özet'te basit kartlar.
+- **Sıradaki (istenirse):** Faz 3 (taksit planı + tekrarlayan), Faz 4 (grafik + bütçe limitleri). Ekstre Okuyucu'ya PDF desteği.
 
 ## Genel bakış
 
@@ -82,12 +83,14 @@
 **Kabul:** Özet'teki gider toplamı İşlemler ekranındaki o ayın gider toplamıyla aynı; limit %80'i geçince çubuk sarıya, %100'ü geçince kırmızıya dönüyor.
 
 ## Faz 5 — Yedekleme, PWA, cilalama  ✅ MVP v0.1
-- [ ] `db/backup.ts`: JSON dışa aktarma / doğrulama / geri yükleme (tam değiştirme)
+- [x] `db/backup.ts`: JSON dışa aktarma / doğrulama / geri yükleme (tam değiştirme)
 - [ ] CSV dışa aktarma (BOM + `;`)
-- [ ] Ayarlar > Yedekleme ekranı, son yedek tarihi, 30 gün hatırlatması
+- [x] Ayarlar > Veri: yedek, son yedek tarihi; Özet'te 14 gün hatırlatması (iPhone'da paylaş menüsüyle kaydetme)
 - [ ] "Tüm veriyi sil" (iki adımlı onay)
-- [ ] vite-plugin-pwa: manifest (ad, ikon, tema rengi), service worker, offline önbellek
-- [ ] Uygulama ikonu
+- [x] vite-plugin-pwa: manifest (ad, ikon, tema rengi), service worker, offline önbellek
+- [x] Uygulama ikonu (+ apple-touch-icon, iOS meta etiketleri)
+- [x] Ekstreden içe aktarma: `domain/importer.ts` (kategori eşleme, tekrar kontrolü, kart ödemesi → transfer)
+- [x] GitHub Pages yayın iş akışı (`.github/workflows/deploy.yml`)
 - [ ] Mobil cilalama: dokunma alanları ≥ 44px, boş durum ekranları, karanlık mod (sistem ayarına göre)
 - [ ] `npm run build` + `npm run preview` ile üretim testi
 
@@ -118,7 +121,8 @@
 - Maaş gününe göre ay başlangıcı
 - Kredi kartı hesap kesim/son ödeme günü hatırlatması
 - Yedeği birleştirerek yükleme
-- İşlem formunda son kullanılan hesabı/kategoriyi hatırlama
+- İşlem formunda son kullanılan kategoriyi hatırlama (hesap yapıldı)
+- Ekstre Okuyucu: PDF'i doğrudan okuma, kendi kategori listesini uygulamadan alma
 
 ---
 
