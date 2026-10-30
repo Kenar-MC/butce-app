@@ -47,6 +47,10 @@ export default function SettingsPage() {
 
       <DataSection />
 
+      <p className="pb-2 text-center text-xs text-zinc-400">
+        Sürüm {__APP_VERSION__} · {new Date(__BUILD_DATE__).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+      </p>
+
       {editing && <CategorySheet cat={editing.cat} kind={kind} sortOrder={list.length} onClose={() => setEditing(null)} />}
     </div>
   )

@@ -206,7 +206,12 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
     const i = Math.floor(k / 100), f = k % 100;
     return String(i).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + String(f).padStart(2, '0');
   };
-  const toKurus = (x) => { const n = Math.round(Math.abs(Number(x)) * 100); return Number.isSafeInteger(n) ? n : null; };
+  // Claude sayı yerine "117.651,46 TL" gibi metin de döndürebilir
+  const toKurus = (x) => {
+    if (typeof x === 'string') return parseAmount(x.replace(/TL|TRY|₺/gi, '').replace(/^[-+]/, '').trim(), true);
+    const n = Math.round(Math.abs(Number(x)) * 100);
+    return Number.isSafeInteger(n) ? n : null;
+  };
   const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
   const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
   const dayFmt = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -230,7 +235,7 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
     mk('2026-10-21', 'ISTANBULKART DOLUM', 50000, 'expense', 'Ulaşım'),
   ];
   let balances = [mkBal('Garanti Bonus', 'credit_card', 1234550, '2026-10-25'), mkBal('Garanti Vadesiz TL', 'bank', 4500000, '2026-10-30')];
-  let summary = { statementDate: '2026-10-25', dueDate: '2026-11-05', statementBalance: 1234550, minimumPayment: 246910, totalDebt: 2049850 };
+  let summary = { statementDate: '2026-10-25', dueDate: '2026-11-05', statementBalance: 1834550, minimumPayment: 366910, totalDebt: 1234550 };
   let isExample = true;
   let meta = { bank: null, period: null };
   let files = [];
@@ -257,8 +262,8 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
     box.append(el('h3', { className: 'sub', textContent: 'Hesap bakiyeleri' }));
     if (summary) {
       const parts = [];
-      if (summary.statementBalance != null) parts.push(`Dönem borcu ${formatTRY(summary.statementBalance)}`);
-      if (summary.totalDebt != null) parts.push(`Toplam borç ${formatTRY(summary.totalDebt)}`);
+      if (summary.statementBalance != null) parts.push(`Ekstre borcu ${formatTRY(summary.statementBalance)}`);
+      if (summary.totalDebt != null) parts.push(`Kalan toplam borç ${formatTRY(summary.totalDebt)}`);
       if (summary.minimumPayment != null) parts.push(`Asgari ${formatTRY(summary.minimumPayment)}`);
       if (summary.dueDate) parts.push(`Son ödeme ${dayLabel(summary.dueDate)}`);
       if (parts.length) box.append(el('p', { className: 'info num', textContent: parts.join(' · ') }));
@@ -276,7 +281,7 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
     const date = labelled(el('input', { className: 'field', type: 'date', value: b.asOf, id: `bdate-${b.id}` }), 'Bakiye tarihi');
     const metaBox = el('div', { className: 'meta' }, [type, date]);
     if (b.accountType === 'credit_card' && summary) {
-      for (const [k, l] of [['statementBalance', 'Dönem borcu'], ['totalDebt', 'Toplam borç']]) {
+      for (const [k, l] of [['totalDebt', 'Kalan toplam borç'], ['statementBalance', 'Ekstre borcu']]) {
         if (summary[k] == null) continue;
         const chip = el('button', { type: 'button', className: 'chip', textContent: `${l} kullan` });
         chip.dataset.set = toInput(summary[k]);
@@ -441,13 +446,13 @@ Reply with ONLY this JSON (no prose):
 All amounts: positive numbers in Turkish lira with up to 2 decimals. Turkish format "1.250,50" means 1250.50. Never negative.
 
 summary (credit card statements only, otherwise null):
-- statementDate = hesap kesim tarihi; dueDate = son ödeme tarihi; statementBalance = dönem borcu / ekstre borcu / hesap özeti borcu; minimumPayment = asgari ödeme tutarı; totalDebt = toplam borç / güncel borç (may include future installments).
+- statementDate = hesap kesim tarihi; dueDate = son ödeme tarihi; statementBalance = ekstre borcu / dönem borcu / hesap özeti borcu (the billed amount); minimumPayment = asgari ödeme tutarı; totalDebt = the CURRENT remaining total debt ("Toplam Kalan Borç", "Güncel Borç", "Kalan Borç", "Toplam Borç"), which reflects payments and new spending since the statement.
 
 balances: one entry per account whose CURRENT balance or debt is visible.
 - Bank / deposit account: label = bank + account name as shown (e.g. "Garanti Vadesiz TL"), accountType "bank", amount = the balance (bakiye / hesap bakiyesi; prefer it over "kullanılabilir bakiye" if both are shown).
-- Credit card: label = bank + card name (e.g. "Garanti Bonus"), accountType "credit_card", amount = the debt. On a statement use statementBalance (dönem borcu); on an app screen use the current debt (güncel borç / toplam borç). Never the card limit or available limit.
+- Credit card: label = bank + card name (e.g. "DenizBank Black"), accountType "credit_card", amount = the debt still owed NOW. Prefer the current remaining total ("Toplam Kalan Borç", "Güncel Borç", "Kalan Borç", "Toplam Borç") over the billed statement amount ("Ekstre Borcu", "Dönem Borcu"). If that total clearly includes future installments not yet billed and they are shown separately ("Bekleyen Taksitler", "Gelecek Dönem Taksitleri"), subtract them. Use the statement amount only if no current total is shown. Never use limits ("Toplam Limit", "Kullanılabilir Limit") or bonus/points.
 - Never put full card numbers or IBANs in labels; the last 4 digits are fine.
-- asOf: the statement date for statements, the date shown on screen, or null.
+- asOf: null for a current balance or current remaining debt (means today); the statement date only when the amount is the billed statement amount; otherwise the date shown on screen.
 - If nothing like this is visible, "balances": [].
 
 items: every money transaction row.
@@ -518,9 +523,10 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","amount":24
       const items = Array.isArray(data?.items) ? data.items : [];
       const newSummary = toSummary(data?.summary);
       const newBalances = (Array.isArray(data?.balances) ? data.balances : []).map(toBal).filter(Boolean);
-      const debt = newSummary?.statementBalance ?? newSummary?.totalDebt;
+      const debt = newSummary?.totalDebt ?? newSummary?.statementBalance;
       if (debt != null && !newBalances.some((b) => b.accountType === 'credit_card')) {
-        newBalances.push(mkBal(`${data?.bank || 'Kredi'} kart`, 'credit_card', debt, newSummary.statementDate));
+        // Kalan borç bugünün tutarıdır; sadece ekstre borcu varsa kesim tarihi kullanılır
+        newBalances.push(mkBal(`${data?.bank || 'Kredi'} kart`, 'credit_card', debt, newSummary.totalDebt != null ? todayISO() : newSummary.statementDate));
       }
       if (!items.length && !newBalances.length) {
         setStatus('Görselde işlem satırı ya da bakiye bulunamadı. Daha net bir görsel dene.', true);

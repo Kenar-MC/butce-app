@@ -228,11 +228,12 @@ function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () => void 
           {hasItems ? ` — ${file.items.length} işlem` : ''}
           {file.invalid ? `, ${file.invalid} bozuk satır atlandı` : ''}
         </p>
-        {sm && (sm.dueDate || sm.minimumPayment !== undefined || sm.totalDebt !== undefined) && (
+        {sm && (sm.dueDate || sm.minimumPayment !== undefined || sm.totalDebt !== undefined || sm.statementBalance !== undefined) && (
           <p className="rounded-xl bg-zinc-100 p-3 text-sm dark:bg-zinc-800">
             {sm.dueDate && <>Son ödeme: <strong>{dayLabel(sm.dueDate)}</strong> · </>}
             {sm.minimumPayment !== undefined && <>Asgari: <Money value={sm.minimumPayment} /> · </>}
-            {sm.totalDebt !== undefined && <>Toplam borç: <Money value={sm.totalDebt} /></>}
+            {sm.statementBalance !== undefined && <>Ekstre borcu: <Money value={sm.statementBalance} /> · </>}
+            {sm.totalDebt !== undefined && <>Kalan toplam borç: <Money value={sm.totalDebt} /></>}
           </p>
         )}
 

@@ -78,7 +78,7 @@ describe('ekstre özeti', () => {
     const f = parseImportFile({ ...head, items: [], statement: { bank: 'Garanti' }, summary: { statementDate: '2026-10-25', dueDate: '2026-11-05', statementBalance: 1234550, minimumPayment: 246910, totalDebt: 2000000 } })
     if (typeof f === 'string') throw new Error(f)
     expect(f.items).toHaveLength(0)
-    expect(f.balances).toEqual([{ label: 'Garanti kart', accountType: 'credit_card', amount: 1234550, asOf: '2026-10-25' }])
+    expect(f.balances).toEqual([{ label: 'Garanti kart', accountType: 'credit_card', amount: 2000000, asOf: undefined }])
     expect(f.summary).toEqual({ statementDate: '2026-10-25', dueDate: '2026-11-05', statementBalance: 1234550, minimumPayment: 246910, totalDebt: 2000000 })
   })
   it('geçersiz özet alanlarını atar; ne satır ne borç varsa reddeder', () => {

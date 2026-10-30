@@ -25,7 +25,7 @@ export interface StatementSummary {
   statementBalance?: number
   /** Asgari ödeme */
   minimumPayment?: number
-  /** Toplam / güncel borç (bankaya göre kalan taksitleri içerebilir) */
+  /** Kalan toplam / güncel borç (ödemeler ve ekstre sonrası harcamalar dahil) */
   totalDebt?: number
 }
 
@@ -94,13 +94,15 @@ export function parseImportFile(json: unknown): ImportFile | string {
   const st = isObj(json.statement) ? json.statement : {}
   const balances = parseBalances(json.balances)
   // Sadece özet varsa kart borcunu bakiye olarak ekle
-  const debt = summary?.statementBalance ?? summary?.totalDebt
+  // Kalan (güncel) borç ödemeleri ve yeni harcamaları yansıttığı için önce o
+  const debt = summary?.totalDebt ?? summary?.statementBalance
   if (debt !== undefined && !balances.some((b) => b.accountType === 'credit_card')) {
     balances.push({
       label: typeof st.bank === 'string' && st.bank ? `${st.bank} kart` : 'Kredi kartı',
       accountType: 'credit_card',
       amount: debt,
-      asOf: summary?.statementDate,
+      // Kalan borç bugünün tutarı; sadece ekstre borcu varsa kesim tarihi
+      asOf: summary?.totalDebt !== undefined ? undefined : summary?.statementDate,
     })
   }
   if (!items.length && !balances.length) return 'Dosyada aktarılabilecek işlem ya da bakiye yok.'

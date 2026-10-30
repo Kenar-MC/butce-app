@@ -238,7 +238,7 @@ bakiye = openingBalance
 - Tekrar: aynı tarih + tür + tutar + hesap olan mevcut kayıt bir satırı eler.
 - Banka hareketinde (hedef kart değilse) kart ödemesi: bu hesaptan seçilen karta transfer.
 - `balances`: her satır ad benzerliği + türle bir hesaba eşlenir (yoksa tek dokunuşla oluşturulur). Hesabın `asOf` tarihindeki bakiyesi tutara eşitlenir; fark **açılış bakiyesine** yazılır (gelir/gider raporunu etkilemez). Kartta tutar borçtur (bakiye −tutar).
-- `summary` bilgi amaçlıdır; kart bakiyesi yoksa dönem borcundan (yoksa toplam borçtan) kart bakiyesi üretilir.
+- `summary` bilgi amaçlıdır; kart bakiyesi yoksa **kalan toplam borçtan** (yoksa ekstre borcundan) kart bakiyesi üretilir. Kalan borç, ekstre sonrası ödeme ve harcamaları yansıtır.
 - Ekstre Okuyucu kaynağı: `tools/ekstre-okuyucu/index.html` (değişince artifact'ı da yeniden yayınla).
 - Ekstre Okuyucu: https://claude.ai/artifact/PWM5VX9xkNTK4G1v6mxFmr (kaynak: Mehmet'in artifact'ları)
 
