@@ -1,11 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
 import { useApp } from '../../components/AppContext'
-import { Empty, Money, MonthPicker } from '../../components/ui'
+import { TxList } from '../../components/TxList'
+import { Money, MonthPicker } from '../../components/ui'
 import { db } from '../../db/db'
 import { byId, useAccounts, useCategories } from '../../db/hooks'
-import type { Transaction, TxType } from '../../db/types'
-import { formatDayTR, monthRange } from '../../domain/dates'
+import type { TxType } from '../../db/types'
+import { monthRange } from '../../domain/dates'
 import { totals } from '../../domain/reports'
 
 export default function TransactionsPage() {
@@ -35,14 +36,7 @@ export default function TransactionsPage() {
           (!categoryId || t.categoryId === categoryId) &&
           (!needle || (t.note ?? '').toLocaleLowerCase('tr').includes(needle)),
       )
-      .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt))
   }, [txs, type, accountId, categoryId, q])
-
-  const groups = useMemo(() => {
-    const m = new Map<string, Transaction[]>()
-    for (const t of filtered) m.set(t.date, [...(m.get(t.date) ?? []), t])
-    return [...m.entries()]
-  }, [filtered])
 
   const sum = totals(filtered)
   const sel = 'input min-h-10 w-auto shrink-0 py-1' // iOS'ta 16px altı yazı odaklanınca ekranı yakınlaştırır
@@ -90,53 +84,7 @@ export default function TransactionsPage() {
       </div>
       <input className="input" type="search" placeholder="Notlarda ara…" value={q} onChange={(e) => setQ(e.target.value)} />
 
-      {txs && groups.length === 0 && <Empty>Bu ay için işlem yok — + ile ekle.</Empty>}
-
-      {groups.map(([date, items]) => {
-        const day = totals(items)
-        return (
-          <section key={date}>
-            <div className="mb-1 flex justify-between px-1 text-sm text-zinc-500">
-              <span>{formatDayTR(date)}</span>
-              {day.net !== 0 && <Money value={Math.abs(day.net)} sign={day.net > 0 ? 'income' : 'expense'} />}
-            </div>
-            <ul className="card divide-y divide-zinc-100 p-0 dark:divide-zinc-800">
-              {items.map((t) => {
-                const cat = t.categoryId ? catById[t.categoryId] : undefined
-                const acc = accById[t.accountId]?.name ?? '?'
-                const sub =
-                  t.type === 'transfer' ? `${acc} → ${(t.toAccountId && accById[t.toAccountId]?.name) || '?'}` : acc
-                return (
-                  <li key={t.id}>
-                    <button onClick={() => openTx(t)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                      <span
-                        className="grid size-10 shrink-0 place-items-center rounded-full text-lg"
-                        style={{ background: `${cat?.color ?? '#64748b'}22` }}
-                      >
-                        {t.type === 'transfer' ? '⇄' : (cat?.icon ?? '❔')}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">
-                          {t.note || (t.type === 'transfer' ? 'Transfer' : (cat?.name ?? 'Kategori yok'))}
-                        </span>
-                        <span className="block truncate text-sm text-zinc-500">
-                          {t.note && cat ? `${cat.name} · ` : ''}
-                          {sub}
-                        </span>
-                      </span>
-                      {t.type === 'transfer' ? (
-                        <Money value={t.amount} className="text-zinc-500" />
-                      ) : (
-                        <Money value={t.amount} sign={t.type} className="font-semibold" />
-                      )}
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        )
-      })}
+      {txs && <TxList txs={filtered} accById={accById} catById={catById} onPick={openTx} />}
     </div>
   )
 }

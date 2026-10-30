@@ -8,6 +8,7 @@
 - Yayın: GitHub Pages (`Kenar-MC/butce-app`, main'e push → otomatik yayın). iPhone'da Safari → Paylaş → Ana Ekrana Ekle.
 - Ek olarak yapılanlar: ekstreden içe aktarma (Ekstre Okuyucu artifact'ı → JSON → Ayarlar › Veri › Dosya yükle), yedek al/geri yükle, PWA (offline, ikon), son kullanılan hesabı hatırlama, yedek hatırlatma bandı, Özet'te basit kartlar.
 - Ekstre Okuyucu artık özet sayfası, hesap hareketleri ve bakiye/borç ekran görüntülerini de okuyor; uygulama hesap bakiyelerini buna göre güncelliyor.
+- Hesap detayı (`/hesaplar/:id`): aylık kategori dağılımı + işlemler; İçe Aktar sayfası (`/ice-aktar`, + üstündeki fotoğraf düğmesi); içe aktarırken yeni hesap açma.
 - **Sıradaki (istenirse):** Faz 3 (taksit planı + tekrarlayan), Faz 4 (grafik + bütçe limitleri). Ekstre Okuyucu'ya PDF desteği.
 
 ## Genel bakış

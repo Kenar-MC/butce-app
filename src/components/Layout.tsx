@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet } from 'react-router'
 import type { Transaction } from '../db/types'
 import { monthKey, todayISO } from '../domain/dates'
 import TransactionSheet from '../features/transactions/TransactionSheet'
@@ -27,7 +27,7 @@ export default function Layout() {
             <NavLink
               key={n.to}
               to={n.to}
-              end
+              end={n.to === '/'}
               className={({ isActive }) =>
                 `flex min-h-11 items-center gap-3 rounded-xl px-3 ${isActive ? 'bg-emerald-50 font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'hover:bg-zinc-100 dark:hover:bg-zinc-900'}`
               }
@@ -47,7 +47,7 @@ export default function Layout() {
             <NavLink
               key={n.to}
               to={n.to}
-              end
+              end={n.to === '/'}
               className={({ isActive }) =>
                 `flex min-h-14 flex-col items-center justify-center text-xs ${isActive ? 'font-semibold text-emerald-600 dark:text-emerald-400' : 'text-zinc-500'}`
               }
@@ -57,6 +57,19 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        <Link
+          to="/ice-aktar"
+          aria-label="Ekstre / bakiye içe aktar"
+          title="Ekstre / bakiye içe aktar"
+          className="fixed right-5 bottom-[calc(8.75rem+env(safe-area-inset-bottom))] z-20 grid size-12 place-items-center rounded-full bg-white text-emerald-700 shadow-lg ring-1 ring-zinc-200 hover:bg-emerald-50 active:scale-95 md:right-9 md:bottom-[6.25rem] dark:bg-zinc-800 dark:text-emerald-300 dark:ring-zinc-700"
+        >
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <circle cx="9" cy="10" r="2" />
+            <path d="m21 16-5-5-9 9" />
+          </svg>
+        </Link>
 
         <button
           aria-label="Yeni işlem"

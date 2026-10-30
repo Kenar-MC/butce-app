@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { adjustedOpeningBalance, computeBalances } from './balances'
-import { totals } from './reports'
+import { categoryBreakdown, totals } from './reports'
 
 const accounts = [
   { id: 'cash', openingBalance: 10000 },
@@ -34,5 +34,22 @@ describe('adjustedOpeningBalance', () => {
     const r = adjustedOpeningBalance({ id: 'card', openingBalance: 0 }, txs, '2026-10-02', -1000)
     expect(r.current).toBe(0)
     expect(r.openingBalance).toBe(-1000)
+  })
+})
+
+describe('categoryBreakdown', () => {
+  it('türe göre kategori toplar ve sıralar', () => {
+    const list = [
+      { type: 'expense' as const, amount: 100, categoryId: 'a' },
+      { type: 'expense' as const, amount: 300, categoryId: 'b' },
+      { type: 'expense' as const, amount: 250, categoryId: 'a' },
+      { type: 'income' as const, amount: 999, categoryId: 'c' },
+      { type: 'transfer' as const, amount: 50 },
+    ]
+    expect(categoryBreakdown(list, 'expense')).toEqual([
+      { categoryId: 'a', amount: 350, count: 2 },
+      { categoryId: 'b', amount: 300, count: 1 },
+    ])
+    expect(categoryBreakdown(list, 'income')).toHaveLength(1)
   })
 })

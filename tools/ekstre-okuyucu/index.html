@@ -463,6 +463,22 @@ items: every money transaction row.
 - description: as printed (merchant + city), without card numbers.
 - Skip headers, totals, sub-totals, previous balance, minimum payment rows, points/bonus/mil rows that are not money.
 - category: debit rows pick exactly one of: ${EXPENSE.join(', ')}. Income rows: one of ${INCOME.join(', ')}. Refunds/cashback: "Diğer Gelir".
+- Classify every row yourself from the merchant name; use "Diğer" only when it is truly unclear. Turkish merchant hints:
+  Market: Migros, A101, BİM, ŞOK, CarrefourSA, Macrocenter, File, Metro, Getir (market), manav, kasap, fırın.
+  Yeme-İçme: Yemeksepeti, Getir Yemek, Trendyol Yemek, restoran, cafe/kafe, Starbucks, Kahve Dünyası, Burger King, McDonald's, pastane, lokanta.
+  Akaryakıt: Shell, Opet, BP, Petrol Ofisi, Total, Aytemiz, akaryakıt.
+  Ulaşım: İstanbulkart, Martı, BiTaksi, Uber, taksi, otopark, HGS/OGS, THY, Pegasus, AJet, metro, vapur, oto kiralama.
+  Faturalar: İGDAŞ, İSKİ, CK Enerji/Boğaziçi, Enerjisa, doğalgaz, elektrik, su, aidat.
+  Telefon/İnternet: Turkcell, Vodafone, Türk Telekom, Superonline, TurkNet.
+  Abonelikler: Netflix, Spotify, YouTube, Apple, iCloud, Google, Disney+, Amazon Prime, Exxen, BluTV, ChatGPT/OpenAI, Claude/Anthropic.
+  Sağlık: eczane, hastane, klinik, diş, Acıbadem, Memorial, optik.
+  Giyim: LC Waikiki, Koton, Zara, H&M, Mavi, DeFacto, Boyner, Nike, Adidas.
+  Spor: Decathlon, spor salonu, gym, Mac Fit, kite, yüzme.
+  Ev: IKEA, Koçtaş, Bauhaus, English Home, Madame Coco, Teknosa, MediaMarkt, Vatan, Arçelik (ev eşyası/elektronik).
+  Eğlence: sinema, Biletix, Passo, konser, oyun, Steam, PlayStation.
+  Kişisel Bakım: kuaför, berber, Gratis, Watsons, Rossmann, Sephora.
+  Eğitim: kurs, okul, üniversite, kitap, D&R, Udemy.
+  Hediye: çiçek, Çiçek Sepeti, hediye.
 - If there are no transaction rows (only a summary page or a balance screen), "items": [].
 - Do not invent rows or balances. If a digit is unclear, give your best reading. Keep the statement's order.
 Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","amount":2499.83,"direction":"debit","kind":"purchase","installmentNo":3,"installmentCount":6,"category":"Ev"}`;
