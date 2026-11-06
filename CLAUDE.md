@@ -1,16 +1,16 @@
 # CLAUDE.md — Bütçe App
 
-Kişisel gelir–gider takip uygulaması. Web (PWA), mobil öncelikli, tamamen offline; veri tarayıcıda (IndexedDB/Dexie). Sunucu yok.
+Kişisel **ekstre okuma + aylık harcama grafikleri** uygulaması (K11, 2026-11-06). Web (PWA), mobil öncelikli, offline; veri tarayıcıda (IndexedDB/Dexie, veritabanı `butce-ekstre`). Sunucu yok. Ekstreyi Ekstre Okuyucu artifact'ı okur, uygulama JSON'u içe aktarır.
 
 **Token tasarrufu — okuma sırası:**
 1. `docs/PLAN.md` en üstteki **Durum** bölümü → hangi fazdayız, son oturum notu (her zaman)
 2. `docs/SPEC.md` → sadece o fazla ilgili bölümler (ekran / veri modeli / iş kuralı)
 3. `docs/CONTEXT.md` → sadece yeni bir karar gerekiyorsa
-4. Kodu toplu okuma; değiştireceğin dosyayı oku. Ortak parçalar: `src/components/ui.tsx`, `src/db/hooks.ts`, `src/index.css` (.card .input .btn-* sınıfları)
+4. Kodu toplu okuma; değiştireceğin dosyayı oku. Ortak parçalar: `src/components/ui.tsx`, `src/components/MonthChart.tsx`, `src/db/hooks.ts`, `src/db/statements.ts`, `src/index.css` (.card .input .btn-* sınıfları)
 
 ## Teknoloji
-React 19 + Vite + TypeScript (strict) · Tailwind CSS v4 · Dexie.js (+ `dexie-react-hooks` / `useLiveQuery`) · React Router (`HashRouter`) · Vitest · oxlint
-Sonraki fazlarda: Recharts (Faz 4), vite-plugin-pwa (Faz 5). Tarih biçimleri için kütüphane yok: `Intl` + `src/domain/dates.ts`.
+React 19 + Vite + TypeScript (strict) · Tailwind CSS v4 · Dexie.js (+ `dexie-react-hooks` / `useLiveQuery`) · React Router (`HashRouter`) · Recharts 3 · vite-plugin-pwa · Vitest · oxlint
+Tarih biçimleri için kütüphane yok: `Intl` + `src/domain/dates.ts`.
 
 Kurulumda paketlerin **güncel sürümlerini** ve güncel kurulum yönergelerini kullan; sürümleri ezberden yazma.
 
@@ -38,9 +38,9 @@ npm run lint      # oxlint
 **Veri**
 - `id` = `newId()` (`src/lib/id.ts`, HTTPS olmayan LAN testinde de çalışır); her kayıtta `createdAt` / `updatedAt`.
 - Tarihler `'YYYY-MM-DD'` string. `new Date('YYYY-MM-DD')` ile UTC kayması yaşama; yardımcıları `src/domain/dates.ts`'e koy.
-- Birden fazla tabloya yazan işlemler (taksit planı + işlemler gibi) tek `db.transaction(...)` içinde.
+- Birden fazla tabloya yazan işlemler (ekstre + satırlar gibi) tek `db.transaction(...)` içinde.
 - Şema değişikliği = Dexie `version(n+1)` + gerekirse `upgrade()` migrasyonu. Mevcut kullanıcı verisini asla bozma.
-- Ağ isteği yapma (Faz 7'ye kadar). Uygulama internetsiz tam çalışmalı.
+- Ağ isteği yapma. Uygulama internetsiz tam çalışmalı (okuma işi Ekstre Okuyucu'da).
 
 **Kod yapısı**
 - İş mantığı `src/domain/` altında **saf fonksiyonlar** (React/Dexie importu yok) ve her biri için `*.test.ts`.
@@ -50,8 +50,8 @@ npm run lint      # oxlint
 **Tasarım**
 - Mobile-first: 360px genişlikten başla, sonra ≥768px için genişlet.
 - Dokunma alanları ≥ 44px; tutar alanında `inputmode="decimal"`.
-- Gelir yeşil, gider kırmızı, transfer nötr renk. Karanlık mod sistem ayarına göre.
-- Boş durumlarda yönlendirici mesaj göster ("Henüz işlem yok — + ile ekle").
+- Tutarlarda gelir/iade yeşil, harcama kırmızı. Grafikte tek seri sütunlar mavi, kategori grafikleri kategori rengi (K14). Karanlık mod sistem ayarına göre.
+- Boş durumlarda yönlendirici mesaj göster ("Henüz ekstre yok — sağ alttaki düğmeyle yükle").
 
 ## Çalışma ortamı
 - **Ana kaynak: GitHub `Kenar-MC/butce-app`** (public). `main`'e her push → GitHub Actions test + build → https://kenar-mc.github.io/butce-app/ (2–3 dk).
@@ -61,7 +61,7 @@ npm run lint      # oxlint
 - Bilgisayara dosya göndermek gerekirse (`device_commit_files`) her seferinde **farklı dosya adı** kullan; aynı ad eski içeriği gönderebiliyor.
 - iPhone: Safari → Paylaş → Ana Ekrana Ekle. Ana ekran uygulamasının verisi Safari sekmesinden ayrıdır. Yeni sürüm uygulama bir sonraki açılışta kendiliğinden yüklenir (service worker, autoUpdate).
 - Ekstre Okuyucu (claude.ai artifact, slug `b641fe36-294a-4557-a21e-93df983c9bd9`): fotoğraf → `kind:"import"` JSON. Biçim: SPEC §3.8.
-- Uçtan uca kontrol: Playwright ile 360px genişlikte ana akış (hesap ekle → işlem ekle → bakiye/liste doğrula). Ekran görüntülerini tek bir birleşik görselde incele.
+- Uçtan uca kontrol: Playwright ile 360px genişlikte ana akış (import JSON yükle → kart oluştur → Ekle → Özet grafiği/kategoriler, ikinci ay, tekrar yüklemede "zaten kayıtlı"). Ekran görüntülerini tek bir birleşik görselde incele.
 - Alt ajan (subagent) kullanma; proje küçük, tek akışta ilerle.
 
 ## Çalışma akışı

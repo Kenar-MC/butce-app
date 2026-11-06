@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
 import { createBackup } from '../../db/backup'
 import { useSetting } from '../../db/hooks'
 import { backupFileName } from '../../domain/backup'
@@ -47,17 +46,6 @@ export default function DataSection() {
   return (
     <section className="space-y-3">
       <h2 className="font-semibold">Veri</h2>
-
-      <Link to="/ice-aktar" className="card flex items-center gap-3">
-        <span className="text-2xl">🧾</span>
-        <span className="flex-1">
-          <span className="block font-medium">Ekstre ve bakiyeleri içe aktar</span>
-          <span className="block text-sm text-zinc-500">Ekstre Okuyucu dosyasını yükle</span>
-        </span>
-        <span className="text-zinc-400" aria-hidden>
-          ›
-        </span>
-      </Link>
 
       <div className="card space-y-3">
         <div>

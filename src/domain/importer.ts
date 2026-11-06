@@ -1,5 +1,6 @@
-import type { Category, CategoryKind, Transaction } from '../db/types'
-import { addMonths } from './dates'
+import type { Card, Category, CategoryKind, Transaction } from '../db/types'
+import { monthKey } from './dates'
+import { merchantKey, resolveMerchant } from './merchant'
 
 /**
  * Ekstre Okuyucu'nun ürettiği içe aktarma dosyası (kind: "import", version 1).
@@ -12,7 +13,10 @@ export interface ImportItem {
   type: ImportItemType
   amount: number
   categoryName?: string
+  /** Ekstrede yazdığı gibi açıklama */
   note?: string
+  /** Okuyucunun verdiği kısa işyeri adı */
+  merchant?: string
   installment?: { no: number; count: number }
 }
 
@@ -30,20 +34,10 @@ export interface StatementSummary {
   totalDebt?: number
 }
 
-/** Ekran görüntüsünden okunan hesap bakiyesi / kart borcu. amount hep pozitif; kartta borçtur. */
-export type BalanceAccountType = 'bank' | 'credit_card' | 'cash'
-export interface ImportBalance {
-  label: string
-  accountType: BalanceAccountType
-  amount: number
-  asOf?: string
-}
-
 export interface ImportFile {
   source?: string
   statement?: { bank?: string | null; period?: string | null }
   summary?: StatementSummary
-  balances: ImportBalance[]
   items: ImportItem[]
   /** Geçersiz olduğu için atlanan satır sayısı */
   invalid: number
@@ -59,7 +53,9 @@ export function detectKind(json: unknown): 'import' | 'backup' | null {
   return json.kind === 'import' || json.kind === 'backup' ? json.kind : null
 }
 
-/** Doğrular; hata varsa kullanıcıya gösterilecek Türkçe mesaj döner */
+const str = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined)
+
+/** Doğrular; hata varsa kullanıcıya gösterilecek Türkçe mesaj döner. Bakiye satırları kullanılmaz. */
 export function parseImportFile(json: unknown): ImportFile | string {
   if (detectKind(json) !== 'import' || !isObj(json)) return 'Bu bir Ekstre Okuyucu dosyası değil.'
   if (json.version !== 1) return 'Dosya sürümü desteklenmiyor. Ekstre Okuyucu ile yeniden indir.'
@@ -82,8 +78,9 @@ export function parseImportFile(json: unknown): ImportFile | string {
       date: raw.date,
       type: raw.type as ImportItemType,
       amount: raw.amount as number,
-      categoryName: typeof raw.categoryName === 'string' ? raw.categoryName.trim().slice(0, 60) : undefined,
-      note: typeof raw.note === 'string' ? raw.note.trim().slice(0, 200) : undefined,
+      categoryName: str(raw.categoryName, 60),
+      note: str(raw.note, 200),
+      merchant: str(raw.merchant, 40),
     }
     const inst = raw.installment
     if (isObj(inst) && Number.isInteger(inst.no) && Number.isInteger(inst.count) && (inst.count as number) > 1) {
@@ -93,20 +90,9 @@ export function parseImportFile(json: unknown): ImportFile | string {
   }
   const summary = parseSummary(json.summary)
   const st = isObj(json.statement) ? json.statement : {}
-  const balances = parseBalances(json.balances)
-  // Sadece özet varsa kart borcunu bakiye olarak ekle
-  // Kalan (güncel) borç ödemeleri ve yeni harcamaları yansıttığı için önce o
-  const debt = summary?.totalDebt ?? summary?.statementBalance
-  if (debt !== undefined && !balances.some((b) => b.accountType === 'credit_card')) {
-    balances.push({
-      label: typeof st.bank === 'string' && st.bank ? `${st.bank} kart` : 'Kredi kartı',
-      accountType: 'credit_card',
-      amount: debt,
-      // Kalan borç bugünün tutarı; sadece ekstre borcu varsa kesim tarihi
-      asOf: summary?.totalDebt !== undefined ? undefined : summary?.statementDate,
-    })
+  if (!items.length && !summary) {
+    return 'Dosyada harcama satırı yok. Ekstre Okuyucu\'da ekstrenin işlem sayfalarını okut.'
   }
-  if (!items.length && !balances.length) return 'Dosyada aktarılabilecek işlem ya da bakiye yok.'
   return {
     source: typeof json.source === 'string' ? json.source : undefined,
     statement: {
@@ -114,56 +100,9 @@ export function parseImportFile(json: unknown): ImportFile | string {
       period: typeof st.period === 'string' ? st.period : null,
     },
     summary,
-    balances,
     items,
     invalid,
   }
-}
-
-function parseBalances(raw: unknown): ImportBalance[] {
-  if (!Array.isArray(raw)) return []
-  const out: ImportBalance[] = []
-  for (const b of raw) {
-    if (
-      !isObj(b) ||
-      typeof b.label !== 'string' ||
-      !b.label.trim() ||
-      !['bank', 'credit_card', 'cash'].includes(b.accountType as string) ||
-      !Number.isSafeInteger(b.amount) ||
-      (b.amount as number) < 0
-    )
-      continue
-    out.push({
-      label: b.label.trim().slice(0, 60),
-      accountType: b.accountType as BalanceAccountType,
-      amount: b.amount as number,
-      asOf: isISODate(b.asOf) ? b.asOf : undefined,
-    })
-  }
-  return out
-}
-
-/** Bakiye satırı için hedef bakiye (kart borcu negatif) */
-export const balanceTarget = (b: Pick<ImportBalance, 'accountType' | 'amount'>) =>
-  b.accountType === 'credit_card' ? -b.amount : b.amount
-
-/**
- * Bakiye satırına en uygun hesabı bulur: aynı tür + ad benzerliği.
- * Ad tutmazsa ve `singleFallback` açıksa, o türde tek hesap varsa onu döner
- * (dosyada aynı türden birden fazla bakiye varsa kapatılmalı; yoksa hepsi aynı hesaba düşer).
- */
-export function matchAccount<A extends { id: string; name: string; type: string; archived: boolean }>(
-  b: Pick<ImportBalance, 'label' | 'accountType'>,
-  accounts: A[],
-  { singleFallback = true }: { singleFallback?: boolean } = {},
-): A | undefined {
-  const same = accounts.filter((a) => !a.archived && a.type === b.accountType)
-  const words = norm(b.label).split(/[^\p{L}\d]+/u).filter((w) => w.length >= 3)
-  const scored = same
-    .map((a) => ({ a, score: words.filter((w) => norm(a.name).includes(w)).length }))
-    .sort((x, y) => y.score - x.score)
-  if (scored[0]?.score) return scored[0].a
-  return singleFallback && same.length === 1 ? same[0] : undefined
 }
 
 function parseSummary(raw: unknown): StatementSummary | undefined {
@@ -179,73 +118,83 @@ function parseSummary(raw: unknown): StatementSummary | undefined {
   return Object.keys(s).length ? s : undefined
 }
 
-export interface ImportOptions {
-  /** İşlemlerin yazılacağı hesap (genelde kredi kartı) */
-  accountId: string
-  /** Kart ödemesinin karşı hesabı; yoksa ödemeler atlanır */
-  paymentCounterpartyId?: string | null
-  /** Hedef hesap kart mı? Kartsa ödeme karşı hesaptan karta, değilse bu hesaptan karta transferdir */
-  targetIsCard?: boolean
-  /** Hesap kesim tarihi: eski taksit satırları bu tarihe yazılır */
-  statementDate?: string
+const norm = (s: string) => s.toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
+
+/**
+ * Dosyaya en uygun kart: banka adı kart adında geçiyorsa o, yoksa son kullanılan kart.
+ */
+export function suggestCard(bank: string | null | undefined, cards: Pick<Card, 'id' | 'name'>[], lastCardId?: string): string | undefined {
+  const words = norm(bank ?? '').split(/[^\p{L}\d]+/u).filter((w) => w.length >= 3)
+  const hit = words.length ? cards.find((c) => words.some((w) => norm(c.name).includes(w))) : undefined
+  return hit?.id ?? cards.find((c) => c.id === lastCardId)?.id
+}
+
+/** Dönem seçimi: bir ay ('YYYY-MM') ya da her satır kendi tarihinin ayına */
+export type MonthMode = string | 'date'
+
+/** Varsayılan dönem: kesim tarihi varsa onun ayı, yoksa satırların tek bir ayda olması halinde o ay */
+export function defaultMonth(file: Pick<ImportFile, 'summary' | 'items'>): MonthMode {
+  if (file.summary?.statementDate) return monthKey(file.summary.statementDate)
+  const months = new Set(file.items.map((i) => monthKey(i.date)))
+  return months.size === 1 ? [...months][0] : 'date'
+}
+
+/** Seçilebilecek dönemler: satırların ve kesim tarihinin ayları (yeniden eskiye) */
+export function monthOptions(file: Pick<ImportFile, 'summary' | 'items'>): string[] {
+  const set = new Set(file.items.map((i) => monthKey(i.date)))
+  if (file.summary?.statementDate) set.add(monthKey(file.summary.statementDate))
+  return [...set].sort().reverse()
+}
+
+export interface PlanOptions {
+  cardId: string
+  month: MonthMode
   categories: Category[]
-  existing: Pick<Transaction, 'date' | 'type' | 'amount' | 'accountId' | 'toAccountId'>[]
+  /** merchantKey → categoryId */
+  rules: Record<string, string>
+  existing: Pick<Transaction, 'date' | 'type' | 'amount' | 'cardId'>[]
   now: string
   newId: () => string
 }
+
+/** Henüz ekstreye bağlanmamış satır (statementId ve importId kayıtta verilir) */
+export type PlannedTx = Omit<Transaction, 'statementId' | 'importId'>
 
 export interface PlannedRow {
   /** Dosyadaki sıra (gözden geçirme ekranında anahtar) */
   index: number
   item: ImportItem
-  /** null: kart ödemesi ve karşı hesap seçilmedi */
-  tx: Transaction | null
-  /** Aynı tarih+tür+tutar+hesap ile zaten kayıtlı */
+  tx: PlannedTx
+  /** Aynı kartta aynı tarih+tür+tutar ile zaten kayıtlı */
   duplicate: boolean
-  /** Eski taksit satırı ekstre tarihine taşındıysa ilk alış tarihi */
-  movedFrom?: string
 }
 
-export interface ImportPlan {
+export interface StatementPlan {
   rows: PlannedRow[]
-  /** Varsayılan seçim: tekrar olmayan ve eklenebilir satırlar */
-  transactions: Transaction[]
   newCategories: Category[]
-  skippedDuplicates: number
+  /** Kart ödemeleri harcama sayılmaz, atlanır */
   skippedPayments: number
 }
 
-const norm = (s: string) => s.toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim()
-const dupKey = (t: Pick<Transaction, 'date' | 'type' | 'amount' | 'accountId' | 'toAccountId'>) =>
-  `${t.date}|${t.type}|${t.amount}|${t.accountId}|${t.toAccountId ?? ''}`
-
-const trDate = (iso: string) => iso.split('-').reverse().join('.')
+const dupKey = (t: Pick<Transaction, 'date' | 'type' | 'amount' | 'cardId'>) => `${t.cardId}|${t.date}|${t.type}|${t.amount}`
 
 /**
- * İçe aktarılacak kayıtları hazırlar (veritabanına yazmaz). Her dosya satırı için bir PlannedRow döner;
- * gözden geçirme ekranı satırları tek tek açıp kapatabilir.
- * - Kategori adı eşleşmezse "Diğer"/"Diğer Gelir", o da yoksa yeni kategori.
- * - Mevcut işlemlerle aynı tarih+tür+tutar+hesap olanlar `duplicate` işaretlenir
- *   (her mevcut kayıt en fazla bir satırı işaretler).
- * - Kart ödemesi: karşı hesap seçildiyse transfer (kart ekstresinde karşı hesap → kart,
- *   banka hareketinde bu hesap → kart), seçilmediyse `tx: null`.
- * - Taksit (2. taksit ve sonrası) ilk alış tarihiyle gelir; ekstre döneminden bir aydan eskiyse
- *   ekstre tarihine taşınır (yoksa dosyadaki en geç taksitsiz tarihe), alış tarihi nota yazılır.
+ * Dosya satırlarını kayda hazırlar (veritabanına yazmaz).
+ * - Kart ödemeleri atlanır.
+ * - Kategori: işyeri kuralı varsa o; yoksa okuyucunun kategorisi; eşleşmezse "Diğer"/"Diğer Gelir" (yoksa oluşturulur).
+ * - Aynı kartta aynı tarih+tür+tutar olanlar `duplicate` (her mevcut kayıt en fazla bir satırı işaretler).
+ * - Ay: seçilen dönem ya da (month = 'date') işlem tarihinin ayı.
  */
-export function planImport(items: ImportItem[], o: ImportOptions): ImportPlan {
+export function planStatement(items: ImportItem[], o: PlanOptions): StatementPlan {
   const rows: PlannedRow[] = []
   const newCategories: Category[] = []
-  let skippedDuplicates = 0
   let skippedPayments = 0
 
   const pool = new Map<string, number>()
   for (const t of o.existing) pool.set(dupKey(t), (pool.get(dupKey(t)) ?? 0) + 1)
 
-  const plainDates = items.filter((i) => !i.installment).map((i) => i.date).sort()
-  const instDate = o.statementDate ?? plainDates[plainDates.length - 1]
-  const oldBefore = instDate ? addMonths(instDate, -1) : undefined
-
   const cats = [...o.categories]
+  const byId = new Map(cats.map((c) => [c.id, c]))
   let nextOrder = cats.reduce((m, c) => Math.max(m, c.sortOrder), -1) + 1
   const findCat = (kind: CategoryKind, name: string | undefined): string => {
     const byName = (n: string) => {
@@ -272,58 +221,40 @@ export function planImport(items: ImportItem[], o: ImportOptions): ImportPlan {
   }
 
   items.forEach((it, index) => {
-    let date = it.date
-    let movedFrom: string | undefined
-    if (it.installment && it.installment.no > 1 && instDate && oldBefore && it.date < oldBefore) {
-      movedFrom = it.date
-      date = instDate
-    }
-
-    let base: Pick<Transaction, 'date' | 'type' | 'amount' | 'accountId' | 'toAccountId'>
-    let categoryId: string | undefined
     if (it.type === 'payment') {
-      const other = o.paymentCounterpartyId
-      if (!other || other === o.accountId) {
-        skippedPayments++
-        rows.push({ index, item: it, tx: null, duplicate: false })
-        return
-      }
-      const [from, to] = o.targetIsCard === false ? [o.accountId, other] : [other, o.accountId]
-      base = { date, type: 'transfer', amount: it.amount, accountId: from, toAccountId: to }
-    } else {
-      base = { date, type: it.type, amount: it.amount, accountId: o.accountId }
-      categoryId = findCat(it.type, it.categoryName)
+      skippedPayments++
+      return
     }
+    const type = it.type
+    const description = it.note ?? ''
+    const merchant = resolveMerchant(it.merchant, description || it.categoryName || '')
+    const ruled = o.rules[merchantKey(merchant)]
+    const categoryId = ruled && byId.get(ruled)?.kind === type ? ruled : findCat(type, it.categoryName)
 
+    const base = { date: it.date, type, amount: it.amount, cardId: o.cardId }
     const key = dupKey(base)
     const left = pool.get(key) ?? 0
     const duplicate = left > 0
-    if (duplicate) {
-      pool.set(key, left - 1)
-      skippedDuplicates++
-    }
+    if (duplicate) pool.set(key, left - 1)
 
-    const inst = it.installment
-      ? ` (${it.installment.no}/${it.installment.count}${movedFrom ? `, alış ${trDate(movedFrom)}` : ''})`
-      : ''
-    const note = ((it.note ?? '') + inst).trim()
     rows.push({
       index,
       item: it,
       duplicate,
-      movedFrom,
       tx: {
         id: o.newId(),
         ...base,
+        month: o.month === 'date' ? monthKey(it.date) : o.month,
         currency: 'TRY',
         categoryId,
-        note: note || undefined,
+        description: description || merchant,
+        merchant,
+        installment: it.installment,
         createdAt: o.now,
         updatedAt: o.now,
       },
     })
   })
 
-  const transactions = rows.filter((r) => r.tx && !r.duplicate).map((r) => r.tx!)
-  return { rows, transactions, newCategories, skippedDuplicates, skippedPayments }
+  return { rows, newCategories, skippedPayments }
 }

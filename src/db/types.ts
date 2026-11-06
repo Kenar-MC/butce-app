@@ -1,23 +1,64 @@
 export type Currency = 'TRY'
-export type AccountType = 'cash' | 'bank' | 'credit_card'
-export type TxType = 'income' | 'expense' | 'transfer'
+export type CardKind = 'credit_card' | 'bank'
+export type TxType = 'expense' | 'income'
 export type CategoryKind = 'income' | 'expense'
-export type Frequency = 'weekly' | 'monthly' | 'yearly'
 
 interface Stamped {
   createdAt: string
   updatedAt: string
 }
 
-export interface Account extends Stamped {
+/** Ekstresi okunan kredi kartı ya da banka hesabı */
+export interface Card extends Stamped {
   id: string
   name: string
-  type: AccountType
+  kind: CardKind
   currency: Currency
-  /** kuruş; kredi kartında mevcut borç negatif */
-  openingBalance: number
-  color?: string
-  archived: boolean
+}
+
+/**
+ * Bir kartın bir aylık dökümü. Aynı kart + ay için tek kayıt vardır;
+ * aynı ayın yeni okumaları (ör. kalan sayfalar) bu kayda eklenir.
+ */
+export interface Statement extends Stamped {
+  id: string
+  cardId: string
+  /** 'YYYY-MM' */
+  month: string
+  currency: Currency
+  bank?: string
+  /** Hesap kesim tarihi */
+  statementDate?: string
+  /** Son ödeme tarihi */
+  dueDate?: string
+  /** Ekstre (dönem) borcu, kuruş */
+  statementBalance?: number
+  minimumPayment?: number
+  /** Kalan toplam borç */
+  totalDebt?: number
+}
+
+/** Ekstredeki bir harcama ya da iade/gelen para satırı */
+export interface Transaction extends Stamped {
+  id: string
+  statementId: string
+  cardId: string
+  /** Sayıldığı ekstre ayı 'YYYY-MM' (kartta kesim ayı, hesapta işlem ayı) */
+  month: string
+  /** İşlem tarihi YYYY-MM-DD */
+  date: string
+  type: TxType
+  /** kuruş, > 0 */
+  amount: number
+  currency: Currency
+  categoryId: string
+  /** Ekstrede yazdığı gibi */
+  description: string
+  /** Kısa işyeri adı (Migros, Trendyol…) — "en çok harcanan yerler" bunu gruplar */
+  merchant: string
+  installment?: { no: number; count: number }
+  /** Hangi içe aktarmayla geldiği (geri almak için) */
+  importId: string
 }
 
 export interface Category extends Stamped {
@@ -30,57 +71,12 @@ export interface Category extends Stamped {
   sortOrder: number
 }
 
-export interface Transaction extends Stamped {
-  id: string
-  type: TxType
-  /** kuruş, > 0 */
-  amount: number
-  currency: Currency
-  /** YYYY-MM-DD */
-  date: string
-  accountId: string
-  toAccountId?: string
-  categoryId?: string
-  note?: string
-  installmentPlanId?: string
-  installmentNo?: number
-  recurringRuleId?: string
-  /** Hangi içe aktarmayla geldiği (geri almak için) */
-  importId?: string
-}
-
-export interface InstallmentPlan extends Stamped {
-  id: string
-  accountId: string
+/** İşyeri → kategori kuralı (kullanıcı bir işyerinin kategorisini değiştirince) */
+export interface MerchantRule {
+  /** merchantKey(merchant) */
+  key: string
   categoryId: string
-  totalAmount: number
-  currency: Currency
-  count: number
-  firstDate: string
-  note?: string
-}
-
-export interface RecurringRule extends Stamped {
-  id: string
-  type: TxType
-  amount: number
-  currency: Currency
-  accountId: string
-  toAccountId?: string
-  categoryId?: string
-  note?: string
-  frequency: Frequency
-  startDate: string
-  endDate?: string
-  lastGeneratedDate?: string
-  active: boolean
-}
-
-export interface Budget extends Stamped {
-  id: string
-  categoryId: string
-  monthlyLimit: number
-  currency: Currency
+  updatedAt: string
 }
 
 export interface Setting {

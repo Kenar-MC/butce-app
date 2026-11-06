@@ -24,7 +24,7 @@ export default defineConfig({
       manifest: {
         name: 'Bütçe',
         short_name: 'Bütçe',
-        description: 'Kişisel gelir–gider takibi',
+        description: 'Ekstre okuma ve aylık harcama grafikleri',
         lang: 'tr',
         start_url: './',
         scope: './',

@@ -1,7 +1,7 @@
 import { ConfirmButton } from '../../components/ui'
-import { db } from '../../db/db'
 import { EKSTRE_OKUYUCU_URL, useSetting } from '../../db/hooks'
-import type { LastImport } from './ImportSheets'
+import { undoImport, type LastImport } from '../../db/statements'
+import { formatMonthTR } from '../../domain/dates'
 import { useFileImporter } from './useFileImporter'
 
 export default function ImportPage() {
@@ -10,21 +10,15 @@ export default function ImportPage() {
 
   async function undo() {
     if (!last) return
-    await db.transaction('rw', [db.transactions, db.accounts, db.settings], async () => {
-      const ids = await db.transactions.filter((t) => t.importId === last.id).primaryKeys()
-      await db.transactions.bulkDelete(ids)
-      for (const [id, openingBalance] of Object.entries(last.prevOpening)) await db.accounts.update(id, { openingBalance })
-      await db.settings.delete('lastImport')
-    })
-    importer.setMessage(`Son içe aktarma geri alındı (${last.count} işlem silindi).`)
+    await undoImport(last)
+    importer.setMessage(`Son içe aktarma geri alındı (${last.count} satır silindi).`)
   }
+
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-xl font-bold">İçe aktar</h1>
-        <p className="text-sm text-zinc-500">
-          Kart ekstresi, hesap hareketleri ya da bankacılık uygulamasındaki bakiye / borç ekran görüntüsü olabilir.
-        </p>
+        <h1 className="text-xl font-bold">Ekstre yükle</h1>
+        <p className="text-sm text-zinc-500">Kredi kartı ekstresi ya da banka hesap hareketleri: fotoğraf, ekran görüntüsü veya PDF.</p>
       </div>
 
       <ol className="space-y-3">
@@ -32,10 +26,9 @@ export default function ImportPage() {
           <div className="flex gap-3">
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-emerald-600 font-bold text-white">1</span>
             <div>
-              <h2 className="font-semibold">Görseli Ekstre Okuyucu'da okut</h2>
+              <h2 className="font-semibold">Ekstre Okuyucu'da okut</h2>
               <p className="text-sm text-zinc-500">
-                Claude işlemleri kategorilere ayırır ve bakiyeleri çıkarır. Kontrol edip "Bütçe dosyasını indir"e dokun, iPhone'da
-                "Dosyalar'a Kaydet"i seç.
+                Claude satırları okur ve kategorilere ayırır. Kontrol edip "Bütçe dosyasını indir"e dokun, iPhone'da "Dosyalar'a Kaydet"i seç.
               </p>
             </div>
           </div>
@@ -50,8 +43,7 @@ export default function ImportPage() {
             <div>
               <h2 className="font-semibold">İndirdiğin dosyayı yükle</h2>
               <p className="text-sm text-zinc-500">
-                İşlemleri hangi hesaba yazacağını seçersin (yeni hesap da açabilirsin); bakiyeler eşleşen hesaplara yazılır. Daha önce
-                eklenen işlemler atlanır.
+                Kartı ve ayı seçersin, satırları tek tek gözden geçirirsin. Daha önce eklenen satırlar atlanır; kart ödemeleri harcama sayılmaz.
               </p>
             </div>
           </div>
@@ -64,8 +56,8 @@ export default function ImportPage() {
       {last && (
         <div className="card space-y-2">
           <p className="text-sm">
-            Son içe aktarma: <strong>{last.count} işlem</strong>
-            {last.accountName && ` → ${last.accountName}`},{' '}
+            Son içe aktarma: <strong>{last.count} satır</strong> → {last.cardName}
+            {last.months.length > 0 && ` (${last.months.map(formatMonthTR).join(', ')})`},{' '}
             {new Date(last.at).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
           </p>
           <ConfirmButton label="Son içe aktarmayı geri al" onConfirm={() => void undo()} />

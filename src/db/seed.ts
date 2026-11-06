@@ -1,6 +1,6 @@
 import type { Transaction as DexieTx } from 'dexie'
 import { newId, nowISO } from '../lib/id'
-import type { Account, Category, CategoryKind } from './types'
+import type { Category, CategoryKind } from './types'
 
 const EXPENSE: [string, string, string][] = [
   ['🛒', 'Market', '#10b981'],
@@ -46,21 +46,6 @@ export function defaultCategories(): Category[] {
   return [...EXPENSE.map(make('expense')), ...INCOME.map(make('income'))]
 }
 
-export function defaultAccount(): Account {
-  const now = nowISO()
-  return {
-    id: newId(),
-    name: 'Nakit',
-    type: 'cash',
-    currency: 'TRY',
-    openingBalance: 0,
-    archived: false,
-    createdAt: now,
-    updatedAt: now,
-  }
-}
-
 export function seed(tx: DexieTx) {
   tx.table('categories').bulkAdd(defaultCategories())
-  tx.table('accounts').add(defaultAccount())
 }

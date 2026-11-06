@@ -1,13 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { computeBalances } from '../domain/balances'
-import { todayISO } from '../domain/dates'
 import { db } from './db'
-import type { Account, Category } from './types'
+import type { Card, Category, Transaction } from './types'
 
 const EMPTY: never[] = []
 
-export function useAccounts(): Account[] {
-  return useLiveQuery(async () => (await db.accounts.toArray()).sort((a, b) => a.createdAt.localeCompare(b.createdAt))) ?? EMPTY
+export function useCards(): Card[] {
+  return useLiveQuery(async () => (await db.cards.toArray()).sort((a, b) => a.name.localeCompare(b.name, 'tr'))) ?? EMPTY
 }
 
 export function useCategories(): Category[] {
@@ -19,21 +17,19 @@ export function useCategories(): Category[] {
   )
 }
 
+/** Tüm ekstre satırları (yüklenene kadar undefined); cardId verilirse sadece o kart */
+export function useTransactions(cardId = ''): Transaction[] | undefined {
+  return useLiveQuery(() => (cardId ? db.transactions.where('cardId').equals(cardId).toArray() : db.transactions.toArray()), [cardId])
+}
+
 export function byId<T extends { id: string }>(items: T[]): Record<string, T> {
   return Object.fromEntries(items.map((i) => [i.id, i]))
 }
 
-export const ACCOUNT_TYPES = {
-  cash: { label: 'Nakit', icon: '💵' },
-  bank: { label: 'Banka', icon: '🏦' },
-  credit_card: { label: 'Kredi Kartı', icon: '💳' },
+export const CARD_KINDS = {
+  credit_card: { label: 'Kredi kartı', icon: '💳' },
+  bank: { label: 'Banka hesabı', icon: '🏦' },
 } as const
-
-/** Hesap bakiyeleri (bugüne kadar) — işlemler değiştikçe güncellenir */
-export function useBalances(accounts: Account[]): Record<string, number> {
-  const txs = useLiveQuery(() => db.transactions.toArray())
-  return computeBalances(accounts, txs ?? EMPTY, todayISO())
-}
 
 /** Ayarlar tablosundan tek bir değer (yüklenene kadar undefined) */
 export function useSetting<T>(key: string): T | undefined {

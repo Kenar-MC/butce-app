@@ -1,12 +1,11 @@
 import { HashRouter, Route, Routes } from 'react-router'
 import Layout from './components/Layout'
-import AccountDetailPage from './features/accounts/AccountDetailPage'
-import AccountsPage from './features/accounts/AccountsPage'
-import BudgetPage from './features/budgets/BudgetPage'
 import DashboardPage from './features/dashboard/DashboardPage'
 import ImportPage from './features/import/ImportPage'
 import SettingsPage from './features/settings/SettingsPage'
-import TransactionsPage from './features/transactions/TransactionsPage'
+import StatementDetailPage from './features/statements/StatementDetailPage'
+import StatementsPage from './features/statements/StatementsPage'
+import TrendPage from './features/trend/TrendPage'
 
 export default function App() {
   return (
@@ -14,10 +13,9 @@ export default function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<DashboardPage />} />
-          <Route path="islemler" element={<TransactionsPage />} />
-          <Route path="hesaplar" element={<AccountsPage />} />
-          <Route path="hesaplar/:id" element={<AccountDetailPage />} />
-          <Route path="butce" element={<BudgetPage />} />
+          <Route path="trend" element={<TrendPage />} />
+          <Route path="ekstreler" element={<StatementsPage />} />
+          <Route path="ekstreler/:id" element={<StatementDetailPage />} />
           <Route path="ayarlar" element={<SettingsPage />} />
           <Route path="ice-aktar" element={<ImportPage />} />
         </Route>

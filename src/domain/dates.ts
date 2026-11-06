@@ -61,3 +61,12 @@ export function formatDayTR(iso: string, currentYear?: number): string {
   const fmt = currentYear !== undefined && y !== currentYear ? dayYearFmt : dayFmt
   return fmt.format(new Date(y, m - 1, d))
 }
+
+const dateFmt = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long' })
+const dateYearFmt = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })
+
+/** '2026-10-24' → '24 Ekim' (withYear: '24 Ekim 2026') */
+export function formatDateTR(iso: string, withYear = false): string {
+  const [y, m, d] = parseISODate(iso)
+  return (withYear ? dateYearFmt : dateFmt).format(new Date(y, m - 1, d))
+}

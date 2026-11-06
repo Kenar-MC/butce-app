@@ -1,8 +1,10 @@
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { Segmented, Sheet } from '../../components/ui'
+import { ConfirmButton, Segmented, Sheet } from '../../components/ui'
 import { db } from '../../db/db'
-import { useCategories } from '../../db/hooks'
-import type { Category, CategoryKind } from '../../db/types'
+import { CARD_KINDS, useCards, useCategories } from '../../db/hooks'
+import { deleteCard } from '../../db/statements'
+import type { Card, CardKind, Category, CategoryKind } from '../../db/types'
 import { newId, nowISO } from '../../lib/id'
 import mascot from '../../assets/mascot.webp'
 import DataSection from './DataSection'
@@ -18,10 +20,36 @@ export default function SettingsPage() {
   const [kind, setKind] = useState<CategoryKind>('expense')
   const [editing, setEditing] = useState<{ cat?: Category } | null>(null)
   const list = categories.filter((c) => c.kind === kind)
+  const cards = useCards()
+  const counts = useLiveQuery(async () => {
+    const m: Record<string, number> = {}
+    await db.statements.each((s) => (m[s.cardId] = (m[s.cardId] ?? 0) + 1))
+    return m
+  })
+  const [editCard, setEditCard] = useState<Card | null>(null)
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">Ayarlar</h1>
+
+      <section className="space-y-3">
+        <h2 className="font-semibold">Kartlar ve hesaplar</h2>
+        {cards.length === 0 ? (
+          <p className="text-sm text-zinc-500">İlk ekstreyi yüklerken kart oluşturulur.</p>
+        ) : (
+          <ul className="card divide-y divide-zinc-100 p-0 dark:divide-zinc-800">
+            {cards.map((c) => (
+              <li key={c.id}>
+                <button onClick={() => setEditCard(c)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <span className="text-2xl">{CARD_KINDS[c.kind].icon}</span>
+                  <span className="flex-1 font-medium">{c.name}</span>
+                  <span className="text-sm text-zinc-500">{counts?.[c.id] ?? 0} ekstre</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
@@ -53,6 +81,7 @@ export default function SettingsPage() {
         Sürüm {__APP_VERSION__} · {new Date(__BUILD_DATE__).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
       </p>
 
+      {editCard && <CardSheet card={editCard} statements={counts?.[editCard.id] ?? 0} onClose={() => setEditCard(null)} />}
       {editing && <CategorySheet cat={editing.cat} kind={kind} sortOrder={list.length} onClose={() => setEditing(null)} />}
     </div>
   )
@@ -125,6 +154,43 @@ function CategorySheet({ cat, kind, sortOrder, onClose }: { cat?: Category; kind
             </button>
           )}
           <button type="submit" className="btn-primary flex-1">
+            Kaydet
+          </button>
+        </div>
+      </form>
+    </Sheet>
+  )
+}
+
+const KIND_OPTIONS = Object.entries(CARD_KINDS).map(([k, v]) => [k, v.label]) as [CardKind, string][]
+
+function CardSheet({ card, statements, onClose }: { card: Card; statements: number; onClose: () => void }) {
+  const [name, setName] = useState(card.name)
+  const [kind, setKind] = useState<CardKind>(card.kind)
+
+  async function save() {
+    if (!name.trim()) return
+    await db.cards.update(card.id, { name: name.trim(), kind, updatedAt: nowISO() })
+    onClose()
+  }
+
+  return (
+    <Sheet title="Kartı düzenle" onClose={onClose}>
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void save()
+        }}
+      >
+        <label className="block">
+          <span className="label">Ad</span>
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
+        </label>
+        <Segmented value={kind} options={KIND_OPTIONS} onChange={setKind} />
+        <div className="flex flex-wrap gap-2 pt-2">
+          <ConfirmButton label={`Sil (${statements} ekstre)`} onConfirm={() => void deleteCard(card.id).then(onClose)} />
+          <button type="submit" className="btn-primary flex-1" disabled={!name.trim()}>
             Kaydet
           </button>
         </div>

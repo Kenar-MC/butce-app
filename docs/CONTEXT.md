@@ -1,13 +1,15 @@
 # Bütçe App — Bağlam (CONTEXT)
 
 > Bu dosya projenin "neden"ini ve alınmış kararları tutar. Yeni bir oturuma başlarken önce bunu oku.
-> Son güncelleme: 2026-10-30 (Faz 0–2 sonrası)
+> Son güncelleme: 2026-11-06 (ekstre sürümüne geçiş, K11)
 
 ## 1. Proje nedir?
 
-Kişisel kullanım için bir **gelir–gider takip uygulaması**. İlk hedef: harcamaları ve gelirleri hızlıca girip ay sonunda nereye ne gittiğini görmek.
+Kişisel kullanım için bir **ekstre okuma ve harcama analizi uygulaması** (2026-11-06'dan beri, K11). Kart ekstresi / hesap hareketleri Ekstre Okuyucu'da (claude.ai artifact) okunur, uygulamaya yüklenir; uygulama aylık harcamayı, kategorilere dağılımı, kategori trendini ve en çok harcanan yerleri gösterir. Elle işlem girilmez.
 
-Uzun vadede:
+İlk sürüm (Faz 0–5) gelir–gider takibiydi; kodu git geçmişinde.
+
+Uzun vadede (istenirse):
 1. Malvarlığı takibi (döviz, altın, hisse, fon, kripto, gayrimenkul vb.)
 2. Piyasa verisiyle güncel değer hesaplama (kur, altın, BIST)
 3. Belki başka kişilerle paylaşım / dışarı açma
@@ -31,6 +33,10 @@ Uzun vadede:
 | K7 | Yayınlama | İlk aşama lokal (`npm run dev`). Dışarı açılırsa **statik hosting** (Cloudflare Pages / Netlify / GitHub Pages) | Backend olmadığı için sunucu maliyeti yok, sunucuda kullanıcı verisi yok |
 | K9 | Yayın | **GitHub Pages**, `Kenar-MC/butce-app` (public; kod açık, veri cihazda) → https://kenar-mc.github.io/butce-app/ | main'e her push otomatik yayın; adres değişirse cihazdaki veri taşınmaz (yedekle taşınır) |
 | K10 | Ekstre okuma | Ayrı bir claude.ai artifact'ı (**Ekstre Okuyucu**) Claude'a fotoğrafı okutur, `kind:"import"` JSON verir; uygulama bu dosyayı içe aktarır | API anahtarı ve ek ücret yok, kullanım claude.ai aboneliğinden; uygulama offline kalır |
+| K11 | Yön değişikliği | Uygulama **sadece ekstre okuma + aylık grafikler**: elle işlem, hesap bakiyesi, bütçe, transfer kaldırıldı. Ana ekran uygulaması (PWA) kaldı; veri yine cihazda. **Sıfırdan başlandı**: yeni veritabanı `butce-ekstre`, eski `butce-app` veritabanına dokunulmadı | Mehmet'in seçimi (2026-11-06); eski veriyi silmeden yeni yapıya geçmek |
+| K12 | Ay = ekstre ayı | Kart ekstresindeki satır, işlem tarihine değil **ekstrenin (kesim) ayına** sayılır; banka hareketlerinde istenirse satır tarihinin ayı. Kart + ay başına tek ekstre kaydı, yeni okumalar ona eklenir | "Aylık ekstrelere göre" harcama; ekstre parça parça okunabilsin |
+| K13 | İşyeri ve kural | Okuyucu kısa işyeri adı verir; kullanıcı bir satırın kategorisini "hepsine uygula" ile değiştirirse işyeri → kategori kuralı kaydedilir ve sonraki içe aktarmalarda okuyucunun kategorisini ezer | Sınıflandırma zamanla kullanıcıya göre düzelsin |
+| K14 | Grafik | Recharts 3; tek seri sütunlar mavi (gelir yeşili / gider kırmızısıyla karışmasın), seçili ay koyu ton. Kategori grafikleri kategorinin kendi rengini kullanır | Sade, okunur; renk anlamı korunur |
 | K8 | Yönlendirme | `HashRouter` (`/#/islemler`) + `base: './'` | Her statik hostta ayarsız çalışır |
 
 ## 4. IndexedDB nasıl çalışır? (K2'nin sonuçları)
@@ -45,6 +51,7 @@ Uzun vadede:
 
 ## 5. Kapsam dışı (şimdilik)
 
+- Elle gelir/gider girişi, hesap bakiyeleri, bütçe limitleri (K11 ile kaldırıldı)
 - Kullanıcı hesabı, giriş, sunucu, senkronizasyon
 - Banka entegrasyonu / otomatik ekstre çekme
 - Aktif çoklu döviz (altyapı hazır ama arayüzde yok)
@@ -60,6 +67,5 @@ Uzun vadede:
 
 ## 7. Açık sorular (ileride netleşecek)
 
-- Kredi kartında hesap kesim / son ödeme günü takibi MVP sonrası mı eklensin?
-- Bütçe limiti her ay aynı mı kalsın, aylık farklı limit gerekir mi?
+- Kategori başına aylık hedef istenir mi?
 - Dışarı açılırsa alan adı ve hosting seçimi

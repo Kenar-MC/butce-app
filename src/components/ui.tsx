@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { formatMonthTR, shiftMonth } from '../domain/dates'
+import { formatMonthTR } from '../domain/dates'
 import { formatTRY } from '../domain/money'
 
 /** Mobilde alttan açılan panel, geniş ekranda ortada pencere */
@@ -34,15 +34,18 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
   )
 }
 
-export function MonthPicker({ month, onChange }: { month: string; onChange: (m: string) => void }) {
-  const btn = 'grid size-11 place-items-center rounded-full text-xl hover:bg-zinc-200 dark:hover:bg-zinc-800'
+/** Ay seçici: oklar sadece verisi olan aylar arasında gezer */
+export function MonthStepper({ month, months, onChange }: { month: string; months: string[]; onChange: (m: string) => void }) {
+  const prev = months.filter((m) => m < month).pop()
+  const next = months.find((m) => m > month)
+  const btn = 'grid size-11 place-items-center rounded-full text-xl hover:bg-zinc-200 disabled:opacity-25 dark:hover:bg-zinc-800'
   return (
     <div className="flex items-center justify-between">
-      <button aria-label="Önceki ay" className={btn} onClick={() => onChange(shiftMonth(month, -1))}>
+      <button aria-label="Önceki ay" className={btn} disabled={!prev} onClick={() => prev && onChange(prev)}>
         ‹
       </button>
       <span className="text-lg font-semibold">{formatMonthTR(month)}</span>
-      <button aria-label="Sonraki ay" className={btn} onClick={() => onChange(shiftMonth(month, 1))}>
+      <button aria-label="Sonraki ay" className={btn} disabled={!next} onClick={() => next && onChange(next)}>
         ›
       </button>
     </div>
@@ -89,23 +92,6 @@ export function Empty({ children }: { children: ReactNode }) {
   return <p className="py-10 text-center text-zinc-500">{children}</p>
 }
 
-/** Tutar alanı: büyük yazı, sayısal klavye, Türkçe virgül */
-export function AmountInput({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
-  return (
-    <div className="relative">
-      <input
-        className="input min-h-16 pr-10 text-3xl font-semibold tabular-nums"
-        inputMode="decimal"
-        placeholder="0,00"
-        autoFocus={autoFocus}
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/[^\d.,]/g, ''))}
-      />
-      <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-2xl text-zinc-400">₺</span>
-    </div>
-  )
-}
-
 /**
  * Yazı kadar genişleyen filtre düğmesi. iOS'ta <select> en uzun seçenek kadar genişlediği için
  * görünür kısım bir etiket; dokununca üstündeki görünmez yerel <select> açılır.
@@ -147,18 +133,53 @@ export function SelectChip({
   )
 }
 
-/** Tik kutulu filtre çipi (SelectChip ile aynı boyda). */
-export function CheckChip({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+/**
+ * Yüzdesi kadar dolu, tam yükseklikte satır (kategori / işyeri). Dokununca açılır;
+ * açıkken `children` (ör. o satırın işlemleri) hemen altında görünür.
+ */
+export function BarRow({
+  icon,
+  title,
+  sub,
+  amount,
+  pct,
+  color,
+  open,
+  onToggle,
+  children,
+}: {
+  icon?: ReactNode
+  title: string
+  sub: string
+  amount: number
+  /** 0–100 */
+  pct: number
+  color: string
+  open: boolean
+  onToggle: () => void
+  children?: ReactNode
+}) {
   return (
-    <label
-      className={`inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 text-sm font-medium select-none ${
-        checked
-          ? 'border-emerald-600 bg-emerald-50 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950 dark:text-emerald-200'
-          : 'border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200'
-      }`}
-    >
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-emerald-600" />
-      <span className="whitespace-nowrap">{label}</span>
-    </label>
+    <div>
+      <button
+        onClick={onToggle}
+        aria-expanded={open}
+        className={`relative block min-h-12 w-full overflow-hidden rounded-xl bg-zinc-50 text-left dark:bg-zinc-800/60 ${open ? 'ring-2 ring-emerald-500' : ''}`}
+      >
+        <span aria-hidden className="absolute inset-y-0 left-0 rounded-xl" style={{ width: `${Math.max(pct, 2)}%`, background: `${color}40` }} />
+        <span className="relative flex items-center gap-2 px-3 py-2.5">
+          {icon !== undefined && <span className="w-6 shrink-0 text-center text-lg">{icon}</span>}
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium">{title}</span>
+            <span className="block text-xs text-zinc-600 dark:text-zinc-400">{sub}</span>
+          </span>
+          <Money value={amount} className="font-semibold" />
+          <span aria-hidden className={`text-zinc-400 transition-transform ${open ? 'rotate-90' : ''}`}>
+            ›
+          </span>
+        </span>
+      </button>
+      {open && <div className="pt-1 pb-2">{children}</div>}
+    </div>
   )
 }

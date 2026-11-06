@@ -1,33 +1,26 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { seed } from './seed'
-import type {
-  Account,
-  Budget,
-  Category,
-  InstallmentPlan,
-  RecurringRule,
-  Setting,
-  Transaction,
-} from './types'
+import type { Card, Category, MerchantRule, Setting, Statement, Transaction } from './types'
 
-export const db = new Dexie('butce-app') as Dexie & {
-  accounts: EntityTable<Account, 'id'>
-  categories: EntityTable<Category, 'id'>
+/**
+ * Ekstre sürümünün veritabanı. Eski gelir–gider sürümünün verisi ('butce-app' veritabanı)
+ * olduğu gibi durur ama kullanılmaz (K11: sıfırdan başlama).
+ */
+export const db = new Dexie('butce-ekstre') as Dexie & {
+  cards: EntityTable<Card, 'id'>
+  statements: EntityTable<Statement, 'id'>
   transactions: EntityTable<Transaction, 'id'>
-  installmentPlans: EntityTable<InstallmentPlan, 'id'>
-  recurringRules: EntityTable<RecurringRule, 'id'>
-  budgets: EntityTable<Budget, 'id'>
+  categories: EntityTable<Category, 'id'>
+  rules: EntityTable<MerchantRule, 'key'>
   settings: EntityTable<Setting, 'key'>
 }
 
 db.version(1).stores({
-  accounts: 'id, type, archived',
-  categories: 'id, kind, archived, sortOrder',
-  transactions:
-    'id, date, type, accountId, toAccountId, categoryId, installmentPlanId, recurringRuleId, [recurringRuleId+date]',
-  installmentPlans: 'id, accountId',
-  recurringRules: 'id, active',
-  budgets: 'id, &categoryId',
+  cards: 'id',
+  statements: 'id, cardId, month, [cardId+month]',
+  transactions: 'id, month, date, cardId, statementId, categoryId, importId',
+  categories: 'id, kind, sortOrder',
+  rules: 'key',
   settings: 'key',
 })
 
