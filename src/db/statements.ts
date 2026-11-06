@@ -1,3 +1,4 @@
+import { cardLabel } from '../domain/cards'
 import type { MonthMode, PlannedTx, StatementSummary } from '../domain/importer'
 import { merchantKey } from '../domain/merchant'
 import { newId, nowISO } from '../lib/id'
@@ -9,10 +10,13 @@ export interface LastImport {
   id: string
   at: string
   count: number
+  /** Ekstrelerin kart adları ("Bonus •• 1234, DenizBank Black") */
   cardName: string
   months: string[]
   /** Bu içe aktarmayla açılan ekstreler; geri alınınca boş kalırlarsa silinir */
   createdStatementIds: string[]
+  /** Bu içe aktarmayla oluşturulan kartlar; geri alınınca ekstresi kalmazsa silinir */
+  createdCardIds?: string[]
 }
 
 export async function createCard(name: string, kind: CardKind): Promise<string> {
@@ -22,73 +26,102 @@ export async function createCard(name: string, kind: CardKind): Promise<string> 
   return card.id
 }
 
-/**
- * Seçilen satırları ekstrelere yazar (tek işlem). Her kart + ay için bir ekstre kaydı;
- * yoksa açılır, varsa satırlar ona eklenir. Özet bilgisi (kesim/son ödeme tarihi, borç) seçilen ayın ekstresine yazılır.
- */
-export async function commitImport(o: {
+/** İçe aktarılacak bir ekstre: hangi kart (gerekirse yeni), hangi ay, hangi satırlar */
+export interface ImportPart {
   card: Card
+  /** Kart yeni oluşturulacaksa true */
+  isNew: boolean
+  /** Var olan karta eklenecek bilgiler (son 4 hane, banka) */
+  adopt?: Partial<Pick<Card, 'last4' | 'bank'>>
   month: MonthMode
   rows: PlannedTx[]
-  newCategories: Category[]
   summary?: StatementSummary
   bank?: string | null
-}): Promise<LastImport> {
+}
+
+/**
+ * Ekstreleri yazar (hepsi tek işlem, tek içe aktarma kimliği). Her kart + ay için bir ekstre kaydı;
+ * yoksa açılır, varsa satırlar ona eklenir. Özet bilgisi seçilen ayın ekstresine yazılır. Yeni kartlar burada oluşur.
+ */
+export async function commitImport(parts: ImportPart[], newCategories: Category[]): Promise<LastImport> {
   const importId = newId()
   const now = nowISO()
-  const months = [...new Set(o.rows.map((r) => r.month))]
-  if (o.month !== 'date' && o.summary && !months.includes(o.month)) months.push(o.month)
-  const usedCats = new Set(o.rows.map((r) => r.categoryId))
-  const created: string[] = []
+  const usedCats = new Set(parts.flatMap((p) => p.rows.map((r) => r.categoryId)))
+  const createdStatementIds: string[] = []
+  const createdCardIds: string[] = []
+  const allMonths = new Set<string>()
+  let count = 0
+  let last!: LastImport
 
-  await db.transaction('rw', [db.statements, db.transactions, db.categories, db.settings], async () => {
-    const newCats = o.newCategories.filter((c) => usedCats.has(c.id))
-    if (newCats.length) await db.categories.bulkAdd(newCats)
+  await db.transaction('rw', [db.cards, db.statements, db.transactions, db.categories, db.settings], async () => {
+    const newCats = newCategories.filter((c) => usedCats.has(c.id))
+    if (newCats.length) await db.categories.bulkPut(newCats)
 
-    const statementOf: Record<string, string> = {}
-    for (const m of months) {
-      const summary = o.month === m ? o.summary : undefined
-      const found = await db.statements.where('[cardId+month]').equals([o.card.id, m]).first()
-      if (found) {
-        statementOf[m] = found.id
-        if (summary || (o.bank && !found.bank)) {
-          await db.statements.update(found.id, { ...summary, ...(o.bank && !found.bank ? { bank: o.bank } : {}), updatedAt: now })
+    for (const p of parts) {
+      // Aynı yeni kart birden fazla ekstrede olabilir (ör. iki ay): bir kez oluşturulur
+      if (p.isNew && !createdCardIds.includes(p.card.id)) {
+        await db.cards.add({ ...p.card, createdAt: now, updatedAt: now })
+        createdCardIds.push(p.card.id)
+      } else if (!p.isNew && p.adopt) await db.cards.update(p.card.id, { ...p.adopt, updatedAt: now })
+
+      const months = [...new Set(p.rows.map((r) => r.month))]
+      if (p.month !== 'date' && !months.includes(p.month)) months.push(p.month)
+      const statementOf: Record<string, string> = {}
+      for (const m of months) {
+        allMonths.add(m)
+        const summary = p.month === m ? p.summary : undefined
+        const found = await db.statements.where('[cardId+month]').equals([p.card.id, m]).first()
+        if (found) {
+          statementOf[m] = found.id
+          if (summary || (p.bank && !found.bank)) {
+            await db.statements.update(found.id, { ...summary, ...(p.bank && !found.bank ? { bank: p.bank } : {}), updatedAt: now })
+          }
+        } else {
+          const st: Statement = {
+            id: newId(),
+            cardId: p.card.id,
+            month: m,
+            currency: 'TRY',
+            ...(p.bank ? { bank: p.bank } : {}),
+            ...summary,
+            createdAt: now,
+            updatedAt: now,
+          }
+          await db.statements.add(st)
+          statementOf[m] = st.id
+          createdStatementIds.push(st.id)
         }
-      } else {
-        const st: Statement = {
-          id: newId(),
-          cardId: o.card.id,
-          month: m,
-          currency: 'TRY',
-          ...(o.bank ? { bank: o.bank } : {}),
-          ...summary,
-          createdAt: now,
-          updatedAt: now,
-        }
-        await db.statements.add(st)
-        statementOf[m] = st.id
-        created.push(st.id)
       }
+      const txs: Transaction[] = p.rows.map((r) => ({ ...r, statementId: statementOf[r.month], importId }))
+      if (txs.length) await db.transactions.bulkAdd(txs)
+      count += txs.length
     }
 
-    const txs: Transaction[] = o.rows.map((r) => ({ ...r, statementId: statementOf[r.month], importId }))
-    if (txs.length) await db.transactions.bulkAdd(txs)
+    last = {
+      id: importId,
+      at: now,
+      count,
+      cardName: [...new Set(parts.map((p) => cardLabel(p.card)))].join(', '),
+      months: [...allMonths].sort(),
+      createdStatementIds,
+      createdCardIds,
+    }
     await db.settings.bulkPut([
-      { key: 'lastCardId', value: o.card.id },
-      {
-        key: 'lastImport',
-        value: { id: importId, at: now, count: txs.length, cardName: o.card.name, months, createdStatementIds: created } satisfies LastImport,
-      },
+      { key: 'lastCardId', value: parts[parts.length - 1]?.card.id },
+      { key: 'lastImport', value: last },
     ])
   })
-  return { id: importId, at: now, count: o.rows.length, cardName: o.card.name, months, createdStatementIds: created }
+  return last
 }
 
 export async function undoImport(last: LastImport): Promise<void> {
-  await db.transaction('rw', [db.statements, db.transactions, db.settings], async () => {
+  await db.transaction('rw', [db.cards, db.statements, db.transactions, db.settings], async () => {
     await db.transactions.where('importId').equals(last.id).delete()
     for (const id of last.createdStatementIds) {
       if ((await db.transactions.where('statementId').equals(id).count()) === 0) await db.statements.delete(id)
+    }
+    for (const id of last.createdCardIds ?? []) {
+      if ((await db.statements.where('cardId').equals(id).count()) === 0) await db.cards.delete(id)
     }
     await db.settings.delete('lastImport')
   })

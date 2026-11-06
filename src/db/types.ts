@@ -14,6 +14,9 @@ export interface Card extends Stamped {
   name: string
   kind: CardKind
   currency: Currency
+  bank?: string
+  /** Kart / hesap numarasının son 4 hanesi — ekstreler bununla doğru karta eşlenir */
+  last4?: string
 }
 
 /**

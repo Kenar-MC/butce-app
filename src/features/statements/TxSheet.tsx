@@ -7,6 +7,7 @@ import { setCategory } from '../../db/statements'
 import type { Transaction } from '../../db/types'
 import { formatDayTR, formatMonthTR } from '../../domain/dates'
 import { merchantKey } from '../../domain/merchant'
+import { cardLabel } from '../../domain/cards'
 
 /** Ekstre satırının ayrıntısı: kategoriyi değiştir (işyerinin tümüne de), sil */
 export default function TxSheet({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
@@ -39,7 +40,7 @@ export default function TxSheet({ tx, onClose }: { tx: Transaction; onClose: () 
         <div className="space-y-1">
           <Money value={tx.amount} sign={tx.type} className="text-2xl font-bold" />
           <p className="text-sm text-zinc-500">
-            {formatDayTR(tx.date)} · {card?.name ?? 'Kart'} · {formatMonthTR(tx.month)} ekstresi
+            {formatDayTR(tx.date)} · {cardLabel(card)} · {formatMonthTR(tx.month)} ekstresi
             {tx.installment && ` · ${tx.installment.no}/${tx.installment.count} taksit`}
           </p>
           {tx.description && tx.description !== tx.merchant && <p className="text-sm break-words text-zinc-600 dark:text-zinc-400">{tx.description}</p>}

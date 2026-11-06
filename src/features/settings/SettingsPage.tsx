@@ -8,6 +8,7 @@ import type { Card, CardKind, Category, CategoryKind } from '../../db/types'
 import { newId, nowISO } from '../../lib/id'
 import mascot from '../../assets/mascot.webp'
 import DataSection from './DataSection'
+import { cardLabel } from '../../domain/cards'
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b']
 const KINDS: [CategoryKind, string][] = [
@@ -42,8 +43,8 @@ export default function SettingsPage() {
               <li key={c.id}>
                 <button onClick={() => setEditCard(c)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
                   <span className="text-2xl">{CARD_KINDS[c.kind].icon}</span>
-                  <span className="flex-1 font-medium">{c.name}</span>
-                  <span className="text-sm text-zinc-500">{counts?.[c.id] ?? 0} ekstre</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{cardLabel(c)}</span>
+                  <span className="shrink-0 text-sm text-zinc-500">{counts?.[c.id] ?? 0} ekstre</span>
                 </button>
               </li>
             ))}
@@ -167,10 +168,13 @@ const KIND_OPTIONS = Object.entries(CARD_KINDS).map(([k, v]) => [k, v.label]) as
 function CardSheet({ card, statements, onClose }: { card: Card; statements: number; onClose: () => void }) {
   const [name, setName] = useState(card.name)
   const [kind, setKind] = useState<CardKind>(card.kind)
+  const [bank, setBank] = useState(card.bank ?? '')
+  const [last4, setLast4] = useState(card.last4 ?? '')
+  const last4Ok = last4 === '' || /^\d{4}$/.test(last4)
 
   async function save() {
-    if (!name.trim()) return
-    await db.cards.update(card.id, { name: name.trim(), kind, updatedAt: nowISO() })
+    if (!name.trim() || !last4Ok) return
+    await db.cards.update(card.id, { name: name.trim(), kind, bank: bank.trim() || undefined, last4: last4 || undefined, updatedAt: nowISO() })
     onClose()
   }
 
@@ -187,10 +191,28 @@ function CardSheet({ card, statements, onClose }: { card: Card; statements: numb
           <span className="label">Ad</span>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
         </label>
+        <div className="grid grid-cols-[1fr_7rem] gap-3">
+          <label className="block">
+            <span className="label">Banka</span>
+            <input className="input" value={bank} placeholder="ör. Garanti BBVA" onChange={(e) => setBank(e.target.value)} />
+          </label>
+          <label className="block">
+            <span className="label">Son 4 hane</span>
+            <input
+              className="input tabular-nums"
+              inputMode="numeric"
+              maxLength={4}
+              value={last4}
+              placeholder="1234"
+              onChange={(e) => setLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            />
+          </label>
+        </div>
+        <p className="text-xs text-zinc-500">Yeni ekstreler bu karta son 4 haneye göre eşlenir; aynı bankanın başka kartıyla karışmaz.</p>
         <Segmented value={kind} options={KIND_OPTIONS} onChange={setKind} />
         <div className="flex flex-wrap gap-2 pt-2">
           <ConfirmButton label={`Sil (${statements} ekstre)`} onConfirm={() => void deleteCard(card.id).then(onClose)} />
-          <button type="submit" className="btn-primary flex-1" disabled={!name.trim()}>
+          <button type="submit" className="btn-primary flex-1" disabled={!name.trim() || !last4Ok}>
             Kaydet
           </button>
         </div>

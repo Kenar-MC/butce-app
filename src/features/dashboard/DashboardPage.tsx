@@ -10,6 +10,7 @@ import type { Transaction } from '../../db/types'
 import { formatMonthTR, shiftMonth } from '../../domain/dates'
 import { merchantKey } from '../../domain/merchant'
 import { categoryTotals, change, chartMonths, merchantTotals, monthlyTotals } from '../../domain/stats'
+import { cardLabel } from '../../domain/cards'
 
 const MERCHANT_LIMIT = 8
 
@@ -62,7 +63,7 @@ export default function DashboardPage() {
             label="Kart"
             value={cardId}
             onChange={setCardId}
-            options={[['', 'Tüm kartlar'], ...cards.map((c): [string, string] => [c.id, c.name])]}
+            options={[['', 'Tüm kartlar'], ...cards.map((c): [string, string] => [c.id, cardLabel(c)])]}
           />
         </div>
       )}

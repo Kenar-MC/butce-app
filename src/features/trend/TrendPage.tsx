@@ -6,6 +6,7 @@ import { byId, useCards, useCategories, useTransactions } from '../../db/hooks'
 import { formatMonthTR } from '../../domain/dates'
 import { formatTRY } from '../../domain/money'
 import { categoryTotals, categoryTrend, change, chartMonths, monthlyTotals } from '../../domain/stats'
+import { cardLabel } from '../../domain/cards'
 
 type Span = '6' | '12'
 
@@ -33,7 +34,7 @@ export default function TrendPage() {
             label="Kart"
             value={cardId}
             onChange={setCardId}
-            options={[['', 'Tüm kartlar'], ...cards.map((c): [string, string] => [c.id, c.name])]}
+            options={[['', 'Tüm kartlar'], ...cards.map((c): [string, string] => [c.id, cardLabel(c)])]}
           />
         )}
         <div className="w-44">

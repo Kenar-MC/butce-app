@@ -4,6 +4,7 @@ import { Empty, Money } from '../../components/ui'
 import { db } from '../../db/db'
 import { byId, CARD_KINDS, useCards, useTransactions } from '../../db/hooks'
 import { formatDateTR, formatMonthTR } from '../../domain/dates'
+import { cardLabel } from '../../domain/cards'
 
 export default function StatementsPage() {
   const cards = useCards()
@@ -43,7 +44,7 @@ export default function StatementsPage() {
                   <Link to={`/ekstreler/${s.id}`} className="flex items-center gap-3 px-4 py-3">
                     <span className="text-2xl">{CARD_KINDS[card?.kind ?? 'credit_card'].icon}</span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{card?.name ?? 'Silinmiş kart'}</span>
+                      <span className="block font-medium break-words">{cardLabel(card)}</span>
                       <span className="block text-sm text-zinc-500">
                         {st.count} işlem{s.dueDate ? ` · son ödeme ${formatDateTR(s.dueDate)}` : ''}
                       </span>

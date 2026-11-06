@@ -9,6 +9,7 @@ import { byId, CARD_KINDS, useCards, useCategories } from '../../db/hooks'
 import { deleteStatement } from '../../db/statements'
 import { formatDateTR, formatMonthTR } from '../../domain/dates'
 import { categoryTotals, monthlyTotals } from '../../domain/stats'
+import { cardLabel } from '../../domain/cards'
 
 export default function StatementDetailPage() {
   const { id = '' } = useParams()
@@ -48,7 +49,7 @@ export default function StatementDetailPage() {
         <div className="flex items-center gap-3">
           <span className="text-3xl">{CARD_KINDS[card?.kind ?? 'credit_card'].icon}</span>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-bold">{card?.name ?? 'Silinmiş kart'}</h1>
+            <h1 className="text-lg font-bold break-words">{cardLabel(card)}</h1>
             <p className="text-sm text-zinc-500">{formatMonthTR(st.month)} ekstresi</p>
           </div>
         </div>

@@ -32,15 +32,15 @@ Kart filtresi (birden fazla kart varsa) ve seçili ay Özet ile Trend arasında 
 
 ### 1.5 İçe aktar (`/ice-aktar`)
 1. Ekstre Okuyucu'yu aç (fotoğraf / ekran görüntüsü / PDF → `kind:"import"` JSON indir).
-2. Dosya yükle → **Ekstreyi ekle** paneli:
-   - Kart / hesap seç (banka adı kart adında geçiyorsa o, yoksa son kullanılan) ya da yeni oluştur (ad + kredi kartı/banka hesabı).
-   - **Hangi aya sayılsın?** Varsayılan: kesim tarihinin ayı; yoksa satırlar tek aydaysa o ay; değilse "her satır kendi tarihinin ayına". Aynı kart+ay ekstresi varsa satırlar ona eklenir (not gösterilir).
+2. Dosya yükle → panel: dosyadaki **her ekstre ayrı bölüm** (okuyucu farklı kart/hesap ve farklı ayları ayrı ekstre olarak verir; K15):
+   - **Kart / hesap** otomatik eşlenir (§3.9): son 4 hane aynı olan kart; yoksa kart **otomatik oluşturulur** (ad: banka + kart adı, son 4 hane, tür). İstenirse başka kart seçilir ya da yeni kartın adı/türü düzeltilir. Aynı yeni kart dosyada iki kez geçerse (ör. iki ay) tek kart açılır.
+   - **Hangi aya sayılsın?** Varsayılan: okuyucunun belirlediği ay → kesim tarihinin ayı → dönem metni ("Ekim 2026", "15.09–14.10.2026") → en geç satırın ayı. Ekstre tek bir aya yazılır; istenirse "her satır kendi tarihinin ayına". Aynı kart+ay ekstresi varsa satırlar ona eklenir (not gösterilir).
    - Satırlar tek tek: işaret kutusu, işyeri, tarih, taksit, açıklama, kategori seçimi. Zaten kayıtlı olanlar işaretsiz gelir. Kart ödemeleri sayılmaz (atlanır, sayısı yazılır).
    - Satır yoksa ama özet varsa "Sadece özet bilgisini kaydet".
-3. Son içe aktarmayı geri al (satırlar silinir, o aktarmayla açılıp boş kalan ekstreler de).
+3. Son içe aktarmayı geri al (satırlar silinir; o aktarmayla açılıp boş kalan ekstreler ve kartlar da).
 
 ### 1.6 Ayarlar
-- Kartlar ve hesaplar: ad / tür düzenle, sil (ekstreleri ve satırlarıyla).
+- Kartlar ve hesaplar: ad, banka, son 4 hane, tür düzenle; sil (ekstreleri ve satırlarıyla). Kartlar her yerde "Ad •• 1234" olarak görünür.
 - Kategoriler (gider / gelir): ekle, düzenle (ikon, ad, renk), arşivle.
 - Yedek al / yedekten geri yükle. Sürüm etiketi.
 
@@ -49,7 +49,7 @@ Kart filtresi (birden fazla kart varsa) ve seçili ay Özet ile Trend arasında 
 Eski sürümün `butce-app` veritabanına dokunulmaz (K11). Tutarlar kuruş, tarihler `YYYY-MM-DD`, aylar `YYYY-MM`.
 
 ```ts
-cards:        'id'                                   // Card { id, name, kind: 'credit_card'|'bank', currency }
+cards:        'id'                                   // Card { id, name, kind: 'credit_card'|'bank', currency, bank?, last4? }
 statements:   'id, cardId, month, [cardId+month]'    // Statement { id, cardId, month, currency, bank?, statementDate?, dueDate?,
                                                      //   statementBalance?, minimumPayment?, totalDebt? }  — kart+ay başına tek kayıt
 transactions: 'id, month, date, cardId, statementId, categoryId, importId'
@@ -85,22 +85,32 @@ Her kayıtta `createdAt` / `updatedAt` (rules'ta `updatedAt`).
 ### 3.6 İstatistik (`src/domain/stats.ts`)
 - `monthlyTotals`, `categoryTotals` (pay ile), `merchantTotals`, `categoryTrend`, `chartMonths` (en fazla n ay, son veri ayıyla biter, seçili ayı pencerede tutar), `change` (önceki 0 ise yok).
 
+### 3.9 Kart eşleme (`src/domain/cards.ts`, K15)
+- Son 4 hane varsa: aynı son 4 haneli (ve aynı türdeki) kart. Yoksa aynı bankada son 4 hanesi kayıtlı olmayan **tek** uygun kart (eski kartlar) seçilir ve son 4 hanesi kaydedilir; birden fazlaysa eşlenmez.
+- Son 4 hane yoksa: adı birebir aynı tek kart, yoksa aynı bankadaki tek uygun kart.
+- Emin olunamazsa eşlenmez → yeni kart açılır (karışmaktansa ayrı kart; sonra elle birleştirilebilir/seçilebilir). Son kullanılan karta düşme yok.
+- Dosyadaki ekstreler sırayla eşlenir: öncekinin açtığı/eşlediği kart sonrakinde görülür (iki farklı kart aynı eski karta karışmaz).
+
 ### 3.7 Yedekleme
 - `{ app: 'butce-app', kind: 'backup', schemaVersion: 2, exportedAt, data: { cards, statements, transactions, categories, rules, settings } }` → `butce-yedek-YYYY-MM-DD.json`.
 - Geri yükleme mevcut veriyi tamamen değiştirir (tek işlem). Eski sürüm yedekleri (`schemaVersion: 1`) reddedilir.
 
 ### 3.8 İçe aktarma dosyası (Ekstre Okuyucu → uygulama)
 ```json
-{ "app": "butce-app", "kind": "import", "version": 1, "source": "ekstre-okuyucu",
-  "statement": { "bank": "Garanti BBVA", "period": "Ekim 2026" },
-  "summary": { "statementDate": "2026-10-14", "dueDate": "2026-10-24", "statementBalance": 1234550,
-               "minimumPayment": 246910, "totalDebt": 2049850 },
-  "balances": [],
-  "items": [ { "date": "2026-10-08", "type": "expense|income|payment", "amount": 249983,
-               "categoryName": "Ev", "note": "TEKNOSA ZORLU AVM", "merchant": "Teknosa",
-               "installment": { "no": 3, "count": 6 } } ] }
+{ "app": "butce-app", "kind": "import", "version": 2, "source": "ekstre-okuyucu",
+  "statements": [
+    { "bank": "Garanti BBVA",
+      "account": { "name": "Bonus Platinum", "last4": "1234", "kind": "credit_card|bank" },
+      "period": "Ekim 2026", "month": "2026-10",
+      "summary": { "statementDate": "2026-10-14", "dueDate": "2026-10-24", "statementBalance": 1234550,
+                   "minimumPayment": 246910, "totalDebt": 2049850 },
+      "items": [ { "date": "2026-10-08", "type": "expense|income|payment", "amount": 249983,
+                   "categoryName": "Ev", "note": "TEKNOSA ZORLU AVM", "merchant": "Teknosa",
+                   "installment": { "no": 3, "count": 6 } } ] } ] }
 ```
-- `merchant` isteğe bağlı (eski dosyalarda yok → tahmin). `balances` artık kullanılmaz (okuyucu boş gönderir).
+- Her ekstre: hangi kart/hesap (`account`, son 4 hane sadece 4 rakam) ve hangi ay (`month`). Okuyucu aynı hesap + aynı ayın sayfalarını tek ekstrede birleştirir, başlıksız devam sayfasını önceki ekstreye ekler; farklı hesap/ay ayrı ekstre olur. Dönemi seçilmemiş ekstre dışa aktarılmaz.
+- Eski `version: 1` dosyaları (üst düzeyde `statement`, `summary`, `items`) tek ekstre olarak okunur; hesap bilgisi sadece banka.
+- `merchant` isteğe bağlı (yoksa açıklamadan tahmin).
 - Kategori adı eşleşmezse "Diğer" / "Diğer Gelir" (yoksa oluşturulur).
 - Ekstre Okuyucu: https://claude.ai/artifact/PWM5VX9xkNTK4G1v6mxFmr — kaynak `tools/ekstre-okuyucu/index.html` (değişince artifact'ı da yeniden yayınla).
 - Okuyucu girdileri: görseller (40'a kadar; çağrı başına sınırla gruplar halinde) ve PDF (pdf.js 3.11.174, cdnjs; metin katmanı varsa metin, yoksa sayfa görüntüsü; şifreli PDF'te şifre sorulur, saklanmaz).

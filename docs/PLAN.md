@@ -7,6 +7,7 @@
 - Yeni veritabanı `butce-ekstre` (eski `butce-app` verisine dokunulmadı, kullanılmıyor). Mehmet sıfırdan başladı.
 - Yayın: GitHub Pages (`Kenar-MC/butce-app`, main'e push → otomatik). iPhone'da ana ekran uygulaması kendiliğinden güncellenir.
 - Ekstre Okuyucu artık satır başına kısa işyeri adı (`merchant`) veriyor, bakiye okumuyor.
+- E2 (2026-11-06): her ekstre hesap (banka, kart adı, son 4 hane) ve ayla etiketleniyor; farklı kart/ay ayrı ekstre; uygulama kartı son 4 haneye göre eşliyor, yoksa otomatik oluşturuyor (K15).
 - **Sıradaki (istenirse):** Fikir havuzundan seçilir.
 
 ## E1 — Ekstre sürümü ✅
@@ -22,11 +23,20 @@
 
 **Kabul:** 360px'te boş uygulamada karşılama → dosya yükle → kart oluştur → Ekle → Özet'te grafik ve kategoriler; ikinci ay yüklenince grafikte iki sütun, sütuna dokununca ay değişir; aynı dosya tekrar yüklenince satırların hepsi "zaten kayıtlı". (Playwright ile doğrulandı.)
 
+## E2 — Ekstre kimliği: hesap + ay ✅
+- [x] Okuyucu: `statements[]` (her biri `account{name,last4,kind}`, `month`, `period`, özet, satırlar), aynı hesap+ay birleşir, devam sayfası öncekine eklenir, başlıkta düzeltilebilir alanlar, dönemsiz ekstre dışa aktarılmaz; dosya `version: 2`
+- [x] Uygulama: v1 + v2 okuma, kart eşleme (son 4 hane / banka / ad), otomatik kart oluşturma, ay tespiti (okuyucu → kesim → dönem metni → en geç satır)
+- [x] İçe aktarma: dosyadaki her ekstre ayrı bölüm, tek seferde kaydet / geri al (açılan kartlar da geri alınır)
+- [x] Kartlarda banka + son 4 hane (Ayarlar'dan düzenlenir), her yerde "Ad •• 1234"
+
+**Kabul:** Tek dosyada Bonus ••1234 (Ekim + Eylül) ve DenizBank ••4417 (Ekim) → 2 kart, 3 ekstre; Miles ••5678 ayrı kart açılır, Bonus'a karışmaz; aynı dosya tekrar yüklenince kartlar son 4 haneyle eşleşir, satırlar "zaten kayıtlı"; geri alınca açılan kart da silinir. Okuyucuda iki görsel grubu: başlıksız devam sayfası önceki ekstreye eklenir. (Playwright ile doğrulandı.)
+
 ## Eski sürüm (Faz 0–5, gelir–gider) — kapandı
 Kurulum, veri katmanı, işlemler, hesaplar, PWA, yedek, ekstre içe aktarma tamamlanmıştı; 2026-11-06'da K11 ile ekstre sürümüne geçildi. Kod git geçmişinde (`23a3441`).
 
 ### Fikir havuzu
 - İşyeri adını düzenleme / iki işyerini birleştirme (ör. "Trendyol Yemek" ↔ "Trendyol")
+- İki kartı birleştirme (yanlışlıkla ayrı açılan kart)
 - Kategori başına aylık hedef / limit ve aşınca uyarı
 - Taksit takibi: kalan taksitler ve gelecek aylara yük
 - CSV / Excel dışa aktarma (ay ve kategori özetleri)

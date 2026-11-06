@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Category } from '../db/types'
-import { defaultMonth, detectKind, monthOptions, parseImportFile, planStatement, suggestCard } from './importer'
+import { defaultMonth, detectKind, monthFromPeriod, monthOptions, parseImportFile, planStatement } from './importer'
 
 const cat = (id: string, name: string, kind: 'expense' | 'income', archived = false): Category => ({
   id, name, kind, icon: '', color: '', archived, sortOrder: 0, createdAt: '', updatedAt: '',
@@ -32,21 +32,45 @@ const file = {
 const parsed = () => {
   const f = parseImportFile(file)
   if (typeof f === 'string') throw new Error(f)
-  return f
+  return f.statements[0]
+}
+
+const v2 = {
+  app: 'butce-app', kind: 'import', version: 2, source: 'ekstre-okuyucu',
+  statements: [
+    { bank: 'Garanti BBVA', account: { name: 'Bonus', last4: '**** 1234', kind: 'credit_card' }, month: '2026-10', period: 'Ekim 2026',
+      summary: { statementDate: '2026-10-14' }, items: file.items.slice(0, 2) },
+    { bank: 'DenizBank', account: { name: 'Black', last4: '98', kind: 'weird' }, month: '2026-13', period: '01.09.2026 - 30.09.2026',
+      items: file.items.slice(3, 4) },
+    { bank: 'Boş', account: {}, items: [] },
+  ],
 }
 
 describe('parseImportFile', () => {
-  it('geçerli satırları alır, bozukları sayar, özeti temizler', () => {
-    const f = parsed()
-    expect(f.items).toHaveLength(4)
+  it('v1: tek ekstre; geçerli satırları alır, bozukları sayar, özeti temizler', () => {
+    const f = parseImportFile(file)
+    if (typeof f === 'string') throw new Error(f)
+    expect(f.statements).toHaveLength(1)
+    const st = f.statements[0]
+    expect(st.items).toHaveLength(4)
     expect(f.invalid).toBe(2)
-    expect(f.statement?.bank).toBe('Garanti')
-    expect(f.items[0].merchant).toBe('Migros')
-    expect(f.summary).toEqual({ statementDate: '2026-10-14', dueDate: '2026-10-24', statementBalance: 2000000 })
+    expect(st.account).toEqual({ bank: 'Garanti', name: null, last4: null, kind: null })
+    expect(st.items[0].merchant).toBe('Migros')
+    expect(st.summary).toEqual({ statementDate: '2026-10-14', dueDate: '2026-10-24', statementBalance: 2000000 })
+  })
+  it('v2: her ekstre kendi hesabı ve ayıyla; boş ekstreyi atar, son 4 haneyi temizler', () => {
+    const f = parseImportFile(v2)
+    if (typeof f === 'string') throw new Error(f)
+    expect(f.statements).toHaveLength(2)
+    expect(f.statements[0].account).toEqual({ bank: 'Garanti BBVA', name: 'Bonus', last4: '1234', kind: 'credit_card' })
+    expect(f.statements[0].month).toBe('2026-10')
+    expect(f.statements[1].account).toEqual({ bank: 'DenizBank', name: 'Black', last4: null, kind: null })
+    expect(f.statements[1].month).toBeUndefined()
+    expect(defaultMonth(f.statements[1])).toBe('2026-09')
   })
   it('yanlış dosyayı reddeder', () => {
     expect(typeof parseImportFile({ app: 'x' })).toBe('string')
-    expect(typeof parseImportFile({ ...file, version: 2 })).toBe('string')
+    expect(typeof parseImportFile({ ...file, version: 3 })).toBe('string')
     expect(detectKind({ app: 'butce-app', kind: 'backup' })).toBe('backup')
     expect(detectKind(null)).toBeNull()
   })
@@ -57,12 +81,20 @@ describe('parseImportFile', () => {
 })
 
 describe('dönem', () => {
-  it('kesim tarihinin ayı; yoksa tek ay; yoksa işlem tarihine göre', () => {
-    const f = parsed()
-    expect(defaultMonth(f)).toBe('2026-10')
-    expect(defaultMonth({ items: f.items.slice(0, 1) })).toBe('2026-10')
-    expect(defaultMonth({ items: f.items })).toBe('date')
-    expect(monthOptions(f)).toEqual(['2026-10', '2026-09'])
+  it('okuyucunun ayı; yoksa kesim ayı; yoksa dönem metni; yoksa en geç satırın ayı', () => {
+    const st = parsed()
+    expect(defaultMonth({ ...st, month: '2026-11' })).toBe('2026-11')
+    expect(defaultMonth(st)).toBe('2026-10')
+    expect(defaultMonth({ items: st.items, period: 'Eylül 2026 Hesap Özeti' })).toBe('2026-09')
+    expect(defaultMonth({ items: st.items })).toBe('2026-10')
+    expect(defaultMonth({ items: [] })).toBe('date')
+    expect(monthOptions(st)).toEqual(['2026-10', '2026-09'])
+  })
+  it('dönem metninden ay', () => {
+    expect(monthFromPeriod('EKİM 2026')).toBe('2026-10')
+    expect(monthFromPeriod('Ağustos 2026 - Eylül 2026')).toBe('2026-09')
+    expect(monthFromPeriod('15.09.2026 - 14.10.2026')).toBe('2026-10')
+    expect(monthFromPeriod('dönem')).toBeUndefined()
   })
 })
 
@@ -95,17 +127,5 @@ describe('planStatement', () => {
     expect(p.newCategories).toHaveLength(1)
     expect(p.newCategories[0].name).toBe('Diğer')
     expect(p.rows[0].tx.categoryId).toBe(p.newCategories[0].id)
-  })
-})
-
-describe('suggestCard', () => {
-  const cards = [
-    { id: 'a', name: 'DenizBank Black' },
-    { id: 'b', name: 'Garanti Bonus' },
-  ]
-  it('banka adı geçen kartı, yoksa son kullanılanı seçer', () => {
-    expect(suggestCard('Garanti BBVA', cards)).toBe('b')
-    expect(suggestCard(null, cards, 'a')).toBe('a')
-    expect(suggestCard('Akbank', cards)).toBeUndefined()
   })
 })

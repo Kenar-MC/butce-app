@@ -110,20 +110,15 @@ footer { font-size: .85rem; color: var(--muted); }
 .pwbox { display: grid; gap: 8px; border: 1px solid var(--warn); background: var(--warn-soft); border-radius: 12px; padding: 12px; }
 .pwfield { width: auto; flex: 1; min-width: 10rem; border-color: var(--line); background: var(--surface); }
 h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(--muted); }
-.balbox { display: grid; gap: 8px; }
-.balbox:empty { display: none; }
+.stmt { display: grid; gap: 8px; margin: 14px 0 4px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--accent-soft); }
+.stmt:first-child { margin-top: 0; }
+.stmt-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: 8px; }
+.sfield { display: grid; gap: 3px; font-size: .8rem; color: var(--muted); min-width: 0; }
+.sfield .field { width: 100%; min-width: 0; box-sizing: border-box; border-color: var(--line); background: var(--surface); font-size: 1rem; color: var(--ink); }
 .info { font-size: .9rem; background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; }
-.bal { display: grid; grid-template-columns: 28px 1fr 8.5rem; grid-template-areas: "chk lab amt" ". meta meta"; column-gap: 10px; row-gap: 6px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; align-items: center; }
-.bal.off { opacity: .5; }
-.bal.bad { border-color: var(--warn); }
-.bal input[type=checkbox] { grid-area: chk; width: 20px; height: 20px; accent-color: var(--accent); }
-.bal .lab { grid-area: lab; font-weight: 600; }
-.bal .amt { grid-area: amt; text-align: right; font-weight: 600; }
-.bal .amt.debt { color: var(--expense); }
-.bal .meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.chip { font: 600 .8rem/1 var(--font-body); border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 7px 10px; cursor: pointer; }
-.chip:hover { border-color: var(--accent); }
-@media (max-width: 560px) { .bal { grid-template-columns: 24px 1fr 7.5rem; grid-template-areas: "chk lab lab" ". meta amt"; } .bal .amt { align-self: start; } }
+.stmt .info { background: var(--surface); margin: 0; }
+.stmt .hint { margin: 0; }
+.stmt + .row { border-top: 0; }
 </style>
 </head>
 <body>
@@ -168,8 +163,6 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
       <span class="badge-example" id="exampleBadge">Örnek veri — kendi ekstreni yükleyince değişir</span>
     </div>
     <div class="summary" id="summary"></div>
-    <div id="balBox" class="balbox"></div>
-    <h3 class="sub" id="txHead">İşlemler</h3>
     <div class="list" id="list"></div>
   </section>
 
@@ -237,26 +230,26 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
   const dayLabel = (iso) => { const [y, m, d] = iso.split('-').map(Number); return dayFmt.format(new Date(y, m - 1, d)); };
 
   // ---- Durum ----
+  // Her ekstre: hangi kart/hesap ve hangi ay. Satırlar ekstresine (sid) bağlı; uygulama her ekstreyi ayrı yazar.
   let uid = 0;
-  const mk = (date, description, kurus, type, category, instNo = null, instCount = null) =>
-    ({ id: ++uid, include: type !== 'payment', date, description, amountText: toInput(kurus), type, category, instNo, instCount });
-  const mkBal = (label, accountType, kurus, asOf) =>
-    ({ id: ++uid, include: true, label, accountType, amountText: toInput(kurus), asOf: isDate(asOf) ? asOf : '' });
+  const KINDS = [['credit_card', 'Kredi kartı'], ['bank', 'Banka hesabı']];
+  const mkStmt = (o) => ({ sid: ++uid, bank: '', name: '', last4: '', kind: 'credit_card', month: '', period: '', summary: null, ...o });
+  const mk = (sid, date, description, merchant, kurus, type, category, instNo = null, instCount = null) =>
+    ({ id: ++uid, sid, include: type !== 'payment', date, description, merchant, amountText: toInput(kurus), type, category, instNo, instCount });
 
+  const exStmt = mkStmt({ bank: 'Garanti BBVA', name: 'Bonus Platinum', last4: '1234', month: '2026-10', period: 'Ekim 2026',
+    summary: { statementDate: '2026-10-14', dueDate: '2026-10-24', statementBalance: 1834550, minimumPayment: 366910 } });
+  let stmts = [exStmt];
   let rows = [
-    mk('2026-10-02', 'MIGROS SANAL MARKET ISTANBUL', 128435, 'expense', 'Market'),
-    mk('2026-10-04', 'SHELL LEVENT ISTASYON', 215000, 'expense', 'Akaryakıt'),
-    mk('2026-10-05', 'NETFLIX.COM', 22999, 'expense', 'Abonelikler'),
-    mk('2026-10-08', 'TEKNOSA ZORLU AVM TAKSİT 3/6', 249983, 'expense', 'Ev', 3, 6),
-    mk('2026-10-11', 'YEMEKSEPETI', 48650, 'expense', 'Yeme-İçme'),
-    mk('2026-10-15', 'ÖDEME - TEŞEKKÜR EDERİZ', 1850000, 'payment', 'Kart ödemesi'),
-    mk('2026-10-18', 'DECATHLON ISTINYE', 174990, 'expense', 'Spor'),
-    mk('2026-10-21', 'ISTANBULKART DOLUM', 50000, 'expense', 'Ulaşım'),
+    mk(exStmt.sid, '2026-10-02', 'MIGROS SANAL MARKET ISTANBUL', 'Migros', 128435, 'expense', 'Market'),
+    mk(exStmt.sid, '2026-10-04', 'SHELL LEVENT ISTASYON', 'Shell', 215000, 'expense', 'Akaryakıt'),
+    mk(exStmt.sid, '2026-10-05', 'NETFLIX.COM', 'Netflix', 22999, 'expense', 'Abonelikler'),
+    mk(exStmt.sid, '2026-10-08', 'TEKNOSA ZORLU AVM TAKSİT 3/6', 'Teknosa', 249983, 'expense', 'Ev', 3, 6),
+    mk(exStmt.sid, '2026-10-11', 'YEMEKSEPETI', 'Yemeksepeti', 48650, 'expense', 'Yeme-İçme'),
+    mk(exStmt.sid, '2026-10-12', 'ÖDEME - TEŞEKKÜR EDERİZ', '', 1850000, 'payment', 'Kart ödemesi'),
+    mk(exStmt.sid, '2026-10-13', 'DECATHLON ISTINYE', 'Decathlon', 174990, 'expense', 'Spor'),
   ];
-  let balances = [];
-  let summary = { statementDate: '2026-10-25', dueDate: '2026-11-05', statementBalance: 1834550, minimumPayment: 366910, totalDebt: 1234550 };
   let isExample = true;
-  let meta = { bank: null, period: null };
   let files = [];
   /** Metin katmanı olan PDF'ler: Claude'a metin olarak gider */
   let docs = [];
@@ -267,80 +260,51 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
   const labelled = (node, label) => { node.setAttribute('aria-label', label); return node; };
   const options = (pairs, value) => pairs.map(([v, l]) => el('option', { value: v, textContent: l, selected: v === value }));
 
+  const isMonth = (s) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s || '');
+  const monthFmt = new Intl.DateTimeFormat('tr-TR', { month: 'long', year: 'numeric' });
+  const monthLabel = (m) => { const [y, mo] = m.split('-').map(Number); return monthFmt.format(new Date(y, mo - 1, 1)); };
+  const stmtLabel = (s) => {
+    const name = [s.bank, s.name].map((x) => x.trim()).filter(Boolean).join(' ') || (s.kind === 'bank' ? 'Banka hesabı' : 'Kredi kartı');
+    return `${name}${s.last4 ? ` •• ${s.last4}` : ''} · ${isMonth(s.month) ? monthLabel(s.month) : 'dönem seçilmedi'}`;
+  };
+
   function render() {
     $('exampleBadge').hidden = !isExample;
-    renderBalances();
-    $('txHead').hidden = !rows.length;
-    $('list').replaceChildren(...rows.map(renderRow));
+    const kids = [];
+    stmts.forEach((s, i) => {
+      kids.push(renderStmt(s, i));
+      for (const r of rows) if (r.sid === s.sid) kids.push(renderRow(r));
+    });
+    $('list').replaceChildren(...kids);
     updateSummary();
   }
 
-  // ---- Bakiyeler ----
-  function renderBalances() {
-    const box = $('balBox');
-    box.replaceChildren();
-    if (!balances.length && !summary) return;
-    box.append(el('h3', { className: 'sub', textContent: 'Ekstre özeti' }));
-    if (summary) {
+  // ---- Ekstre başlığı: hangi hesap, hangi ay (düzeltilebilir) ----
+  const stmtTitle = (s, i) => `${stmts.length > 1 ? `Ekstre ${i + 1}/${stmts.length}: ` : ''}${stmtLabel(s)} — ${rows.filter((r) => r.sid === s.sid).length} satır`;
+  function renderStmt(s, i) {
+    const box = el('div', { className: 'stmt' });
+    box.dataset.sid = s.sid;
+    box.append(el('h3', { className: 'sub stmt-title', textContent: stmtTitle(s, i) }));
+    const input = (key, props = {}) => el('input', { className: 'field', id: `s${key}-${s.sid}`, value: s[key] ?? '', ...props });
+    const field = (label, node) => el('label', { className: 'sfield' }, [el('span', { textContent: label }), node]);
+    box.append(el('div', { className: 'stmt-fields' }, [
+      field('Banka', input('bank', { placeholder: 'ör. Garanti BBVA' })),
+      field('Kart / hesap adı', input('name', { placeholder: 'ör. Bonus Platinum' })),
+      field('Son 4 hane', input('last4', { inputMode: 'numeric', maxLength: 4, placeholder: '1234' })),
+      field('Tür', el('select', { className: 'field', id: `skind-${s.sid}` }, options(KINDS, s.kind))),
+      field('Dönem (ay)', input('month', { type: 'month', placeholder: '2026-10' })),
+    ]));
+    const sm = s.summary;
+    if (sm) {
       const parts = [];
-      if (summary.statementBalance != null) parts.push(`Ekstre borcu ${formatTRY(summary.statementBalance)}`);
-      if (summary.totalDebt != null) parts.push(`Kalan toplam borç ${formatTRY(summary.totalDebt)}`);
-      if (summary.minimumPayment != null) parts.push(`Asgari ${formatTRY(summary.minimumPayment)}`);
-      if (summary.dueDate) parts.push(`Son ödeme ${dayLabel(summary.dueDate)}`);
+      if (sm.statementDate) parts.push(`Kesim ${dayLabel(sm.statementDate)}`);
+      if (sm.dueDate) parts.push(`Son ödeme ${dayLabel(sm.dueDate)}`);
+      if (sm.statementBalance != null) parts.push(`Ekstre borcu ${formatTRY(sm.statementBalance)}`);
+      if (sm.minimumPayment != null) parts.push(`Asgari ${formatTRY(sm.minimumPayment)}`);
       if (parts.length) box.append(el('p', { className: 'info num', textContent: parts.join(' · ') }));
     }
-    for (const b of balances) box.append(renderBal(b));
-  }
-
-  function renderBal(b) {
-    const row = el('div', { className: 'bal' });
-    row.dataset.bid = b.id;
-    const chk = labelled(el('input', { type: 'checkbox', checked: b.include, id: `binc-${b.id}` }), 'Bakiyeyi aktar');
-    const lab = labelled(el('input', { className: 'field lab', value: b.label, id: `blab-${b.id}` }), 'Hesap adı');
-    const amt = labelled(el('input', { className: 'field amt num', value: b.amountText, inputMode: 'decimal', id: `bamt-${b.id}` }), b.accountType === 'credit_card' ? 'Kart borcu (TL)' : 'Bakiye (TL)');
-    const type = labelled(el('select', { className: 'field', id: `btype-${b.id}` }, options(BAL_TYPES, b.accountType)), 'Hesap türü');
-    const date = labelled(el('input', { className: 'field', type: 'date', value: b.asOf, id: `bdate-${b.id}` }), 'Bakiye tarihi');
-    const metaBox = el('div', { className: 'meta' }, [type, date]);
-    if (b.accountType === 'credit_card' && summary) {
-      for (const [k, l] of [['totalDebt', 'Kalan toplam borç'], ['statementBalance', 'Ekstre borcu']]) {
-        if (summary[k] == null) continue;
-        const chip = el('button', { type: 'button', className: 'chip', textContent: `${l} kullan` });
-        chip.dataset.set = toInput(summary[k]);
-        metaBox.append(chip);
-      }
-    }
-    metaBox.append(el('span', { className: 'hint', hidden: true, textContent: 'Tutar, ad ya da tarih geçersiz — düzelt' }));
-    row.append(chk, lab, amt, metaBox);
-    paintBal(row, b);
-    return row;
-  }
-
-  const validBal = (b) => !!b.label.trim() && parseAmount(b.amountText, true) !== null && (!b.asOf || isDate(b.asOf));
-  function paintBal(row, b) {
-    row.classList.toggle('off', !b.include);
-    row.classList.toggle('bad', b.include && !validBal(b));
-    row.querySelector('.hint').hidden = !(b.include && !validBal(b));
-    row.querySelector('.amt').classList.toggle('debt', b.accountType === 'credit_card');
-  }
-
-  $('balBox').addEventListener('input', onBalEdit);
-  $('balBox').addEventListener('change', onBalEdit);
-  $('balBox').addEventListener('click', (e) => {
-    const chip = e.target.closest('.chip'); if (!chip) return;
-    const rowEl = chip.closest('.bal'); const b = balances.find((x) => x.id === Number(rowEl.dataset.bid)); if (!b) return;
-    b.amountText = chip.dataset.set; rowEl.querySelector('.amt').value = b.amountText; paintBal(rowEl, b); updateSummary();
-  });
-  function onBalEdit(e) {
-    const rowEl = e.target.closest('.bal'); if (!rowEl) return;
-    const b = balances.find((x) => x.id === Number(rowEl.dataset.bid)); if (!b) return;
-    const key = e.target.id.split('-')[0];
-    if (key === 'binc') b.include = e.target.checked;
-    else if (key === 'blab') b.label = e.target.value;
-    else if (key === 'bamt') b.amountText = e.target.value;
-    else if (key === 'bdate') b.asOf = e.target.value;
-    else if (key === 'btype' && e.type === 'change') { b.accountType = e.target.value; rowEl.replaceWith(renderBal(b)); updateSummary(); return; }
-    paintBal(rowEl, b);
-    updateSummary();
+    box.append(el('p', { className: 'hint', hidden: isMonth(s.month), textContent: 'Dönemi (ayı) seç: uygulama bu ekstreyi o aya yazar.' }));
+    return box;
   }
 
   // ---- İşlem listesi ----
@@ -384,6 +348,18 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
   $('list').addEventListener('input', onEdit);
   $('list').addEventListener('change', onEdit);
   function onEdit(e) {
+    const sEl = e.target.closest('.stmt');
+    if (sEl) {
+      const s = stmts.find((x) => x.sid === Number(sEl.dataset.sid)); if (!s) return;
+      const key = e.target.id.split('-')[0].slice(1);
+      if (key === 'last4') {
+        s.last4 = e.target.value.replace(/\D/g, '').slice(0, 4);
+        if (e.target.value !== s.last4) e.target.value = s.last4;
+      } else if (key in s) s[key] = e.target.value;
+      sEl.querySelector('.stmt-title').textContent = stmtTitle(s, stmts.indexOf(s));
+      sEl.querySelector('p.hint').hidden = isMonth(s.month);
+      return;
+    }
     const rowEl = e.target.closest('.row'); if (!rowEl) return;
     const r = rows.find((x) => x.id === Number(rowEl.dataset.id)); if (!r) return;
     const key = e.target.id.split('-')[0];
@@ -405,9 +381,9 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
       const k = parseAmount(r.amountText); n++;
       if (r.type === 'expense') exp += k; else if (r.type === 'income') inc += k;
     }
-    bad += balances.filter((b) => b.include && !validBal(b)).length;
     const tile = (label, value, cls = '') => el('div', { className: 'tile' }, [el('span', { textContent: label }), el('strong', { className: `num ${cls}`, textContent: value })]);
     $('summary').replaceChildren(
+      ...(stmts.length > 1 ? [tile('Ekstre', String(stmts.length))] : []),
       tile('İşlem', `${n} / ${rows.length}`),
       tile('Gider', formatTRY(exp), 'exp'),
       tile('Gelir / iade', formatTRY(inc), 'inc'),
@@ -563,19 +539,35 @@ h3.sub { font: 600 .95rem/1.3 var(--font-display); margin: 6px 0 0; color: var(-
   }
 
   // ---- Claude ile okuma ----
-  const INTRO_IMG = `You are reading screenshots or photos from Turkish banking. They can be: a credit card statement (transaction pages and/or the summary page) or an account transaction list ("hesap hareketleri"). The images belong together, in order.`;
-  const INTRO_TXT = `You are reading TEXT extracted from a Turkish bank PDF: a credit card statement (ekstre), an account statement (hesap hareketleri) or similar. Each line is one printed line; columns are separated by " | ". Pages are marked "--- Sayfa N ---". Treat it exactly like the printed document.`;
+  const INTRO_IMG = `You are reading screenshots or photos from Turkish banking. They can be: credit card statements (transaction pages and/or the summary page) or account transaction lists ("hesap hareketleri"). Usually all images are pages of one statement, in order, but they may also contain several statements (different cards/accounts or different months).`;
+  const INTRO_TXT = `You are reading TEXT extracted from a Turkish bank PDF: a credit card statement (ekstre), an account statement (hesap hareketleri) or similar; it may contain more than one statement. Each line is one printed line; columns are separated by " | ". Pages are marked "--- Sayfa N ---". Treat it exactly like the printed document.`;
   const PROMPT_BODY = `Reply with ONLY this JSON (no prose):
-{"bank": string|null, "period": string|null,
- "summary": {"statementDate": "YYYY-MM-DD"|null, "dueDate": "YYYY-MM-DD"|null, "statementBalance": number|null, "minimumPayment": number|null, "totalDebt": number|null} | null,
- "items": [{"date": "YYYY-MM-DD", "description": string, "merchant": string, "amount": number, "direction": "debit"|"credit", "kind": "purchase"|"payment"|"refund"|"fee"|"interest"|"income"|"other", "installmentNo": integer|null, "installmentCount": integer|null, "category": string}]}
+{"statements": [{
+  "bank": string|null,
+  "account": {"name": string|null, "last4": string|null, "kind": "credit_card"|"bank"},
+  "period": string|null,
+  "month": "YYYY-MM"|null,
+  "summary": {"statementDate": "YYYY-MM-DD"|null, "dueDate": "YYYY-MM-DD"|null, "statementBalance": number|null, "minimumPayment": number|null, "totalDebt": number|null} | null,
+  "items": [{"date": "YYYY-MM-DD", "description": string, "merchant": string, "amount": number, "direction": "debit"|"credit", "kind": "purchase"|"payment"|"refund"|"fee"|"interest"|"income"|"other", "installmentNo": integer|null, "installmentCount": integer|null, "category": string}]
+}]}
+
+statements: one entry per distinct statement, so different statements are never mixed.
+- Pages of the same statement (same card/account and same period) go into ONE entry, rows in page order.
+- Use a separate entry for each different card/account (different last 4 digits or product) and for each different statement period/month.
+- A page without its own header (continuation page) belongs to the statement it continues.
+- bank: the bank name as printed (e.g. "Garanti BBVA", "DenizBank", "Yapı Kredi").
+- account.name: the card or account product name WITHOUT the bank name (e.g. "Bonus Platinum", "Black", "World", "Axess", "Vadesiz TL"); null if not shown.
+- account.last4: ONLY the last 4 digits of the card number or account number / IBAN when visible (e.g. "4417"). Never more digits. null if not visible.
+- account.kind: "credit_card" for card statements, "bank" for account transaction lists.
+- period: the statement period text as printed (e.g. "Ekim 2026", "15.09.2026 - 14.10.2026").
+- month: the statement's billing month. Card statement: the month of the statement date (hesap kesim tarihi / ekstre tarihi), even if some purchases are from the previous month. Account list: the month the listed period covers (if it spans months, the latest). null only if there is no way to tell.
 
 All amounts: positive numbers in Turkish lira with up to 2 decimals. Turkish format "1.250,50" means 1250.50. Never negative.
 
-summary (credit card statements only, otherwise null):
+summary (credit card statements only, otherwise null; per statement):
 - statementDate = hesap kesim tarihi; dueDate = son ödeme tarihi; statementBalance = ekstre borcu / dönem borcu / hesap özeti borcu (the billed amount); minimumPayment = asgari ödeme tutarı; totalDebt = the CURRENT remaining total debt ("Toplam Kalan Borç", "Güncel Borç", "Kalan Borç", "Toplam Borç"), which reflects payments and new spending since the statement.
 
-items: every money transaction row.
+items: every money transaction row of that statement.
 - direction "debit" = money spent, leaving the account, or added to card debt. "credit" = refund, cashback or incoming money (often shown with "-", "(A)", "+" or "ALACAK").
 - Card payments, on a card statement or a bank account list (e.g. "ÖDEME", "KREDİ KARTI ÖDEMESİ"): kind "payment", category "Kart ödemesi".
 - date: if a row shows no year, take it from the statement period. ISO format.
@@ -618,12 +610,12 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","merchant":
   };
   const PERMANENT = ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed', 'images_unavailable'];
 
-  function toRow(it) {
+  function toRow(it, sid) {
     const kurus = toKurus(it.amount);
     const type = it.kind === 'payment' || it.category === 'Kart ödemesi' ? 'payment' : it.direction === 'credit' ? 'income' : 'expense';
     const n = Number(it.installmentNo), c = Number(it.installmentCount);
     const r = {
-      id: ++uid, include: type !== 'payment',
+      id: ++uid, sid, include: type !== 'payment',
       date: isDate(it.date) ? it.date : '',
       description: String(it.description ?? '').slice(0, 200),
       merchant: String(it.merchant ?? '').trim().slice(0, 40),
@@ -634,13 +626,6 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","merchant":
     };
     if (!categoriesFor(type).includes(r.category)) r.category = type === 'income' ? 'Diğer Gelir' : type === 'payment' ? 'Kart ödemesi' : 'Diğer';
     return r;
-  }
-
-  function toBal(b) {
-    const k = toKurus(b?.amount);
-    if (k === null || typeof b?.label !== 'string' || !b.label.trim()) return null;
-    const type = ['bank', 'credit_card', 'cash'].includes(b.accountType) ? b.accountType : 'bank';
-    return mkBal(b.label.trim().slice(0, 60), type, k, b.asOf);
   }
 
   function toSummary(s) {
@@ -667,20 +652,51 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","merchant":
     return jobs;
   }
 
+  // Yanıtlardaki ekstreleri birleştirir: aynı hesap + aynı ay tek ekstre; başlıksız devam sayfası öncekine eklenir
+  const txt = (v) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 60) : null);
+  const key = (v) => String(v ?? '').toLocaleLowerCase('tr').replace(/[^\p{L}\d]+/gu, ' ').trim();
+  const bankKey = (v) => key(v).split(' ').find((w) => w.length >= 3) ?? '';
+  function identOf(st) {
+    const a = st?.account && typeof st.account === 'object' ? st.account : {};
+    const digits = String(a.last4 ?? '').replace(/\D/g, '');
+    const sd = st?.summary?.statementDate;
+    return {
+      bank: txt(st?.bank), name: txt(a.name), last4: digits.length >= 4 ? digits.slice(-4) : null,
+      kind: a.kind === 'bank' || a.kind === 'credit_card' ? a.kind : null,
+      month: isMonth(st?.month) ? st.month : isDate(sd) ? sd.slice(0, 7) : null,
+      period: txt(st?.period),
+    };
+  }
+  function sameStmt(a, b) {
+    if (a.month && b.month && a.month !== b.month) return false;
+    if (a.last4 && b.last4) return a.last4 === b.last4;
+    if (a.name && b.name && key(a.name) !== key(b.name)) return false;
+    if (a.bank && b.bank && bankKey(a.bank) !== bankKey(b.bank)) return false;
+    return true;
+  }
+
   async function readAll(signal) {
     const jobs = makeJobs();
-    const acc = { items: [], balances: [], summary: {}, bank: null, period: null };
+    const acc = [];
+    let last = null;
     let failure = null;
     for (let j = 0; j < jobs.length; j++) {
       setStatus(jobs.length > 1 ? `Claude okuyor… ${j + 1}/${jobs.length}: ${jobs[j].label} (her biri 20–60 sn)` : 'Claude okuyor… genelde 20–60 saniye sürer.', false, true);
       try {
         const data = await jobs[j].run(signal);
-        if (Array.isArray(data?.items)) acc.items.push(...data.items);
-        if (Array.isArray(data?.balances)) acc.balances.push(...data.balances);
-        const sm = data?.summary && typeof data.summary === 'object' ? data.summary : {};
-        for (const [k, v] of Object.entries(sm)) if (v != null && acc.summary[k] == null) acc.summary[k] = v;
-        acc.bank ??= data?.bank ?? null;
-        acc.period ??= data?.period ?? null;
+        // Eski biçim (tek ekstre, üst düzeyde items) de kabul
+        const list = Array.isArray(data?.statements) ? data.statements : data && (Array.isArray(data.items) || data.summary) ? [{ ...data, account: data.account ?? {} }] : [];
+        for (const st of list) {
+          const id = identOf(st);
+          const anon = !id.bank && !id.name && !id.last4;
+          let target = anon && last && (!id.month || !last.month || id.month === last.month) ? last : acc.find((x) => sameStmt(x, id));
+          if (!target) { target = { ...id, summary: {}, items: [] }; acc.push(target); }
+          else for (const k of ['bank', 'name', 'last4', 'kind', 'month', 'period']) target[k] ??= id[k];
+          const sm = st?.summary && typeof st.summary === 'object' ? st.summary : {};
+          for (const [k, v] of Object.entries(sm)) if (v != null && target.summary[k] == null) target.summary[k] = v;
+          if (Array.isArray(st?.items)) target.items.push(...st.items);
+          last = target;
+        }
       } catch (e) {
         failure = { code: e?.code ?? 'upstream_error', group: j + 1, groups: jobs.length, label: jobs[j].label };
         break;
@@ -701,34 +717,33 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","merchant":
         sample = null; $('readBtn').disabled = true; $('readBtn').textContent = 'Okuma kullanılamıyor';
         return;
       }
-      const newSummary = toSummary(acc.summary);
-      const seen = new Set();
-      const newBalances = acc.balances.map(toBal).filter(Boolean).filter((b) => {
-        const k = `${b.accountType}|${b.label.toLocaleLowerCase('tr')}`;
-        if (seen.has(k)) return false;
-        seen.add(k); return true;
-      });
-      const debt = newSummary?.totalDebt ?? newSummary?.statementBalance;
-      if (debt != null && !newBalances.some((b) => b.accountType === 'credit_card')) {
-        // Kalan borç bugünün tutarıdır; sadece ekstre borcu varsa kesim tarihi kullanılır
-        newBalances.push(mkBal(`${acc.bank || 'Kredi'} kart`, 'credit_card', debt, newSummary.totalDebt != null ? todayISO() : newSummary.statementDate));
-      }
-      if (!acc.items.length && !newBalances.length) {
-        setStatus(failure ? (ERR[failure.code] ?? 'Bağlantı sorunu oluştu. Tekrar dene.') : 'Görselde işlem satırı ya da bakiye bulunamadı. Daha net bir görsel dene.', failure?.code !== 'cancelled');
+      const found = acc.filter((x) => x.items.length || toSummary(x.summary));
+      if (!found.length) {
+        setStatus(failure ? (ERR[failure.code] ?? 'Bağlantı sorunu oluştu. Tekrar dene.') : 'Görselde ekstre satırı bulunamadı. Daha net bir görsel dene.', failure?.code !== 'cancelled');
         return;
       }
-      rows = acc.items.map(toRow);
-      balances = newBalances;
-      summary = newSummary;
+      stmts = []; rows = [];
+      for (const x of found) {
+        const summ = toSummary(x.summary);
+        const cardSigns = !!summ || x.items.some((it) => it?.kind === 'payment' || Number(it?.installmentCount) > 1);
+        const dates = x.items.map((it) => it?.date).filter(isDate).sort();
+        const st = mkStmt({
+          bank: x.bank ?? '', name: x.name ?? '', last4: x.last4 ?? '',
+          kind: x.kind ?? (cardSigns ? 'credit_card' : 'bank'),
+          month: x.month ?? (summ?.statementDate ? summ.statementDate.slice(0, 7) : dates.length ? dates[dates.length - 1].slice(0, 7) : ''),
+          period: x.period ?? '', summary: summ,
+        });
+        stmts.push(st);
+        rows.push(...x.items.map((it) => toRow(it, st.sid)));
+      }
       isExample = false;
-      meta = { bank: acc.bank, period: acc.period };
       render();
-      const bad = rows.filter((r) => !valid(r)).length + balances.filter((b) => !validBal(b)).length;
-      const what = [rows.length && `${rows.length} işlem`, balances.length && `${balances.length} bakiye`].filter(Boolean).join(', ');
+      const bad = rows.filter((r) => !valid(r)).length;
       const partial = failure
         ? ` ${failure.label} ${failure.code === 'cancelled' ? 'durduruldu' : 'okunamadı'}; onu ayrıca okut.`
         : '';
-      setStatus(`${what} okundu${meta.bank ? ` (${meta.bank})` : ''}.${bad ? ` ${bad} satırı kontrol et.` : ' Aşağıdan kontrol et.'}${partial}`, !!failure && failure.code !== 'cancelled');
+      const which = stmts.length > 1 ? `${stmts.length} ekstre, ${rows.length} satır okundu.` : `${rows.length} satır okundu (${stmtLabel(stmts[0])}).`;
+      setStatus(`${which}${bad ? ` ${bad} satırı kontrol et.` : ' Aşağıdan hesap ve ayı kontrol et.'}${partial}`, !!failure && failure.code !== 'cancelled');
     } finally {
       ctl = null;
       $('stopBtn').hidden = true;
@@ -738,39 +753,48 @@ Example item: {"date":"2026-10-08","description":"TEKNOSA ZORLU AVM","merchant":
   $('stopBtn').addEventListener('click', () => ctl?.abort());
 
   // ---- Dışa aktarma ----
-  function exportItems() {
-    return rows.filter((r) => r.include && valid(r)).map((r) => {
+  function exportItems(sid) {
+    return rows.filter((r) => r.sid === sid && r.include && valid(r)).map((r) => {
       const item = { date: r.date, type: r.type, amount: parseAmount(r.amountText), currency: 'TRY', categoryName: r.category, note: r.description.trim() };
       if (r.merchant) item.merchant = r.merchant;
       if (r.instNo && r.instCount) item.installment = { no: r.instNo, count: r.instCount };
       return item;
     });
   }
-  function exportBalances() {
-    return balances.filter((b) => b.include && validBal(b)).map((b) => ({
-      label: b.label.trim(), accountType: b.accountType, amount: parseAmount(b.amountText, true), ...(b.asOf ? { asOf: b.asOf } : {}),
-    }));
-  }
+  const exportList = () => stmts.map((s) => ({ s, items: exportItems(s.sid) })).filter((x) => x.items.length || x.s.summary);
   function jsonText() {
     return JSON.stringify({
-      app: 'butce-app', kind: 'import', version: 1, source: 'ekstre-okuyucu', createdAt: new Date().toISOString(),
-      statement: meta, ...(summary ? { summary } : {}), balances: exportBalances(), items: exportItems(),
+      app: 'butce-app', kind: 'import', version: 2, source: 'ekstre-okuyucu', createdAt: new Date().toISOString(),
+      statements: exportList().map(({ s, items }) => ({
+        bank: s.bank.trim() || null,
+        account: { name: s.name.trim() || null, last4: s.last4 || null, kind: s.kind },
+        period: s.period || null,
+        month: s.month,
+        ...(s.summary ? { summary: s.summary } : {}),
+        items,
+      })),
     }, null, 2);
   }
   function csvText() {
     const label = Object.fromEntries(TYPES);
-    const q = (s) => /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    const lines = ['Tarih;Tür;Kategori;Tutar;Not;Taksit'];
-    for (const it of exportItems()) {
-      const [y, m, d] = it.date.split('-');
-      lines.push([`${d}.${m}.${y}`, label[it.type], it.categoryName, toInput(it.amount).replace(/\./g, ''), q(it.note), it.installment ? `${it.installment.no}/${it.installment.count}` : ''].join(';'));
+    const q = (v) => /[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+    const lines = ['Hesap;Dönem;Tarih;Tür;Kategori;Tutar;Not;Taksit'];
+    for (const { s, items } of exportList()) {
+      const acct = [[s.bank, s.name].filter(Boolean).join(' '), s.last4 && `**${s.last4}`].filter(Boolean).join(' ');
+      for (const it of items) {
+        const [y, m, d] = it.date.split('-');
+        lines.push([q(acct), s.month, `${d}.${m}.${y}`, label[it.type], it.categoryName, toInput(it.amount).replace(/\./g, ''), q(it.note), it.installment ? `${it.installment.no}/${it.installment.count}` : ''].join(';'));
+      }
     }
-    return '﻿' + lines.join('\r\n');
+    return '\ufeff' + lines.join('\r\n');
   }
   function exStatus(msg, err = false) { const s = $('exStatus'); s.className = 'status' + (err ? ' error' : ''); s.textContent = msg; }
   function guard(needItems = false) {
     if (isExample) { exStatus('Bunlar örnek veriler; önce kendi görselini okut.', true); return false; }
-    if (needItems ? !exportItems().length : !exportItems().length && !exportBalances().length) { exStatus(needItems ? 'CSV için aktarılacak işlem yok.' : 'Aktarılacak geçerli satır yok.', true); return false; }
+    const list = exportList();
+    if (needItems ? !list.some((x) => x.items.length) : !list.length) { exStatus(needItems ? 'CSV için aktarılacak işlem yok.' : 'Aktarılacak geçerli satır yok.', true); return false; }
+    const noMonth = list.find((x) => !isMonth(x.s.month));
+    if (noMonth) { exStatus(`${stmtLabel(noMonth.s)}: dönemi (ayı) seç.`, true); return false; }
     return true;
   }
   async function save(ext, make, needItems) {

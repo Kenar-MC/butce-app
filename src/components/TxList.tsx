@@ -1,6 +1,7 @@
 import type { Card, Category, Transaction } from '../db/types'
 import { formatDayTR } from '../domain/dates'
 import { Empty, Money } from './ui'
+import { cardLabel } from '../domain/cards'
 
 const THIS_YEAR = new Date().getFullYear()
 
@@ -40,7 +41,7 @@ export function TxList({
                 const sub = [
                   cat?.name ?? 'Kategori yok',
                   t.installment && `${t.installment.no}/${t.installment.count} taksit`,
-                  cardById && cardById[t.cardId]?.name,
+                  cardById && cardLabel(cardById[t.cardId]),
                 ]
                   .filter(Boolean)
                   .join(' · ')
