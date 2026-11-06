@@ -129,7 +129,7 @@ Okuyucunun kategori listesi bununla aynıdır (değişirse ikisini birlikte değ
 src/
 ├─ main.tsx, App.tsx, pwa.ts
 ├─ db/          db.ts (şema), types.ts, seed.ts, hooks.ts, statements.ts (içe aktar / geri al / sil / kategori kuralı), backup.ts
-├─ domain/      money.ts, dates.ts, importer.ts, merchant.ts, stats.ts, backup.ts  (+ *.test.ts)
+├─ domain/      money.ts, dates.ts, importer.ts, cards.ts, merchant.ts, stats.ts, backup.ts  (+ *.test.ts)
 ├─ features/
 │  ├─ dashboard/ (Özet)  ├─ trend/  ├─ statements/ (liste, detay, TxSheet)  ├─ import/  └─ settings/
 ├─ components/  ui.tsx (Sheet, MonthStepper, Money, ConfirmButton, Segmented, SelectChip, BarRow, Empty),
