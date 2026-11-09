@@ -41,6 +41,7 @@ npm run lint      # oxlint
 - Birden fazla tabloya yazan işlemler (ekstre + satırlar gibi) tek `db.transaction(...)` içinde.
 - Şema değişikliği = Dexie `version(n+1)` + gerekirse `upgrade()` migrasyonu. Mevcut kullanıcı verisini asla bozma.
 - Ağ isteği yapma. Uygulama internetsiz tam çalışmalı (okuma işi Ekstre Okuyucu'da).
+- **İmleçli Dexie sorgusu yok** (`uniqueKeys`, `each`, `filter`, `orderBy().keys/reverse`…): iPhone Safari'de boş tabloda "Unable to open cursor" ile uygulama açılmıyor (K16). `toArray()` ile al, JS'te süz.
 
 **Kod yapısı**
 - İş mantığı `src/domain/` altında **saf fonksiyonlar** (React/Dexie importu yok) ve her biri için `*.test.ts`.

@@ -26,7 +26,7 @@ export default function SettingsPage() {
   const cards = useCards()
   const counts = useLiveQuery(async () => {
     const m: Record<string, number> = {}
-    await db.statements.each((s) => (m[s.cardId] = (m[s.cardId] ?? 0) + 1))
+    for (const s of await db.statements.toArray()) m[s.cardId] = (m[s.cardId] ?? 0) + 1
     return m
   })
   const [editCard, setEditCard] = useState<Card | null>(null)

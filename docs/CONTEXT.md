@@ -38,6 +38,7 @@ Uzun vadede (istenirse):
 | K13 | İşyeri ve kural | Okuyucu kısa işyeri adı verir; kullanıcı bir satırın kategorisini "hepsine uygula" ile değiştirirse işyeri → kategori kuralı kaydedilir ve sonraki içe aktarmalarda okuyucunun kategorisini ezer | Sınıflandırma zamanla kullanıcıya göre düzelsin |
 | K14 | Grafik | Recharts 3; tek seri sütunlar mavi (gelir yeşili / gider kırmızısıyla karışmasın), seçili ay koyu ton. Kategori grafikleri kategorinin kendi rengini kullanır | Sade, okunur; renk anlamı korunur |
 | K15 | Ekstre kimliği | Okuyucu her ekstreyi **hesap (banka, kart adı, son 4 hane, tür) + ay** ile etiketler; farklı hesap/ay ayrı ekstre (dosya v2). Uygulama kartı son 4 haneye göre eşler; emin olamazsa **yeni kart açar** (son kullanılan karta düşmez) | Ekstreler birbirine karışmasın, kart elle seçilmek zorunda kalınmasın (Mehmet, 2026-11-06) |
+| K16 | Safari ve IndexedDB | Veritabanında **imleç açan sorgu kullanılmaz** (`uniqueKeys`, `each`, `filter`, `orderBy().keys` vb.); sadece `toArray`, `where().equals()`, `get`, `count`, `bulk*`. Filtreleme JS'te yapılır | iPhone Safari'de boş tabloda imleçli sorgu "UnknownError: Unable to open cursor" verip uygulamayı açılmaz hale getirdi (2026-11-09). Kişisel veri küçük, `toArray` yeterince hızlı |
 | K8 | Yönlendirme | `HashRouter` (`/#/islemler`) + `base: './'` | Her statik hostta ayarsız çalışır |
 
 ## 4. IndexedDB nasıl çalışır? (K2'nin sonuçları)

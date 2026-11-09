@@ -10,6 +10,7 @@
 - E2 (2026-11-06): her ekstre hesap (banka, kart adı, son 4 hane) ve ayla etiketleniyor; farklı kart/ay ayrı ekstre; uygulama kartı son 4 haneye göre eşliyor, yoksa otomatik oluşturuyor (K15).
 - 2026-11-09 düzeltme: yeni sürüm iPhone'da "bekliyor"da kalıyordu (injectRegister: false iken eklenti skipWaiting/clientsClaim açmıyor). Artık açık + bekleyen eski sürüme SKIP_WAITING + Ayarlar'da "Güncellemeleri denetle". Takılı telefon, düzeltme yayınlanınca bir sonraki açılışta kendiliğinden geçer (eski sürüm + takılı bekleyen durumuyla yerelde canlandırılıp doğrulandı).
 - 2026-11-09: iPhone'da güncellemeden sonra beyaz ekran bildirildi (iOS'ta yeniden üretilemedi; Mehmet uygulamayı silip yeniden ekleyecek). Eklenenler: açılış bekçisi (index.html; 12 sn'de açılmazsa ya da dosya yüklenemezse açıklama + "Önbelleği temizle ve yenile"), ErrorBoundary (hata mesajı + kurtarma), Ayarlar'da önbellek temizleme. Hiçbiri IndexedDB'ye dokunmaz.
+- 2026-11-09 kök neden bulundu: iPhone'da hata ekranı "UnknownError: Unable to open cursor" gösterdi. Safari'de boş tabloda `uniqueKeys()` (imleç) çöküyor; sıfırdan açılan uygulamada Layout'taki ay listesi sorgusu her açılışta çöküyordu (beyaz ekranın da sebebi). Tüm imleçli sorgular kaldırıldı (K16); imleç çağrılarını kaydeden testle boş ve dolu veritabanında tüm ekranlarda 0 imleç doğrulandı.
 - **Sıradaki (istenirse):** Fikir havuzundan seçilir.
 
 ## E1 — Ekstre sürümü ✅

@@ -17,7 +17,10 @@ const NAV = [
 const NO_MONTHS: string[] = []
 
 export default function Layout() {
-  const months = (useLiveQuery(() => db.transactions.orderBy('month').uniqueKeys()) as string[] | undefined) ?? NO_MONTHS
+  // Not: Safari'de boş tabloda imleçli sorgular (uniqueKeys, each, filter) "Unable to open cursor" ile çöküyor;
+  // bu yüzden veritabanında sadece toArray / where().equals() / get / count kullanılır (K16).
+  const months =
+    useLiveQuery(async () => [...new Set((await db.statements.toArray()).map((s) => s.month))].sort()) ?? NO_MONTHS
   const [picked, setPicked] = useState<string | null>(null)
   const [cardId, setCardId] = useState('')
   const [tx, setTx] = useState<Transaction | null>(null)

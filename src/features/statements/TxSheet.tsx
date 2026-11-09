@@ -15,7 +15,7 @@ export default function TxSheet({ tx, onClose }: { tx: Transaction; onClose: () 
   const card = useCards().find((c) => c.id === tx.cardId)
   const key = merchantKey(tx.merchant)
   const sameCount = useLiveQuery(
-    () => db.transactions.filter((t) => t.type === tx.type && merchantKey(t.merchant) === key).count(),
+    async () => (await db.transactions.toArray()).filter((t) => t.type === tx.type && merchantKey(t.merchant) === key).length,
     [key, tx.type],
   )
   const [categoryId, setCategoryId] = useState(tx.categoryId)

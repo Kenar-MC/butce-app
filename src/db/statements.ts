@@ -154,7 +154,7 @@ export async function setCategory(tx: Transaction, categoryId: string, allOfMerc
   }
   const key = merchantKey(tx.merchant)
   return db.transaction('rw', [db.transactions, db.rules], async () => {
-    const same = await db.transactions.filter((t) => t.type === tx.type && merchantKey(t.merchant) === key).toArray()
+    const same = (await db.transactions.toArray()).filter((t) => t.type === tx.type && merchantKey(t.merchant) === key)
     await db.transactions.bulkUpdate(same.map((t) => ({ key: t.id, changes: { categoryId, updatedAt: now } })))
     await db.rules.put({ key, categoryId, updatedAt: now })
     return same.length
