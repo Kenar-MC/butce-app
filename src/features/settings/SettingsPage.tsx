@@ -2,13 +2,14 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { ConfirmButton, Segmented, Sheet } from '../../components/ui'
 import { db } from '../../db/db'
-import { CARD_KINDS, useCards, useCategories } from '../../db/hooks'
+import { CARD_KINDS, useCards, useCategories, kindIcon } from '../../db/hooks'
 import { deleteCard } from '../../db/statements'
 import type { Card, CardKind, Category, CategoryKind } from '../../db/types'
 import { newId, nowISO } from '../../lib/id'
 import mascot from '../../assets/mascot.webp'
 import DataSection from './DataSection'
 import { cardLabel } from '../../domain/cards'
+import { clearCacheAndReload } from '../../lib/recover'
 import { checkForUpdate } from '../../pwa'
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b']
@@ -43,7 +44,7 @@ export default function SettingsPage() {
             {cards.map((c) => (
               <li key={c.id}>
                 <button onClick={() => setEditCard(c)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                  <span className="text-2xl">{CARD_KINDS[c.kind].icon}</span>
+                  <span className="text-2xl">{kindIcon(c.kind)}</span>
                   <span className="min-w-0 flex-1 truncate font-medium">{cardLabel(c)}</span>
                   <span className="shrink-0 text-sm text-zinc-500">{counts?.[c.id] ?? 0} ekstre</span>
                 </button>
@@ -246,6 +247,9 @@ function UpdateCheck() {
         {state === 'checking' ? 'Denetleniyor…' : 'Güncellemeleri denetle'}
       </button>
       {state && state !== 'checking' && <p role="status">{UPDATE_TEXT[state]}</p>}
+      <button className="min-h-11 px-3 text-xs text-zinc-500 underline" onClick={() => void clearCacheAndReload()}>
+        Sorun mu var? Önbelleği temizle ve yenile (veriler silinmez)
+      </button>
     </div>
   )
 }

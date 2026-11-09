@@ -5,7 +5,7 @@ import { useApp } from '../../components/AppContext'
 import { ConfirmButton, Money, Segmented, Sheet } from '../../components/ui'
 import { restoreBackup } from '../../db/backup'
 import { db } from '../../db/db'
-import { CARD_KINDS, useCards, useCategories } from '../../db/hooks'
+import { CARD_KINDS, useCards, useCategories, kindIcon } from '../../db/hooks'
 import { commitImport, type ImportPart } from '../../db/statements'
 import type { Card, CardKind, Category, Statement } from '../../db/types'
 import type { BackupFile } from '../../domain/backup'
@@ -91,7 +91,7 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
             <section key={b.i} className="space-y-3 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-700">
               <h3 className="font-semibold">
                 {sts.length > 1 && <span className="text-zinc-500">{b.i + 1}/{sts.length} · </span>}
-                {CARD_KINDS[b.card.kind].icon} {cardLabel(b.card)}
+                {kindIcon(b.card.kind)} {cardLabel(b.card)}
                 {b.month !== 'date' && <span className="text-zinc-500"> · {formatMonthTR(b.month)}</span>}
               </h3>
               <p className="text-xs text-zinc-500">
@@ -111,7 +111,7 @@ export function ImportSheet({ file, onClose }: { file: ImportFile; onClose: () =
                 >
                   {cards.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {CARD_KINDS[c.kind].icon} {cardLabel(c)}
+                      {kindIcon(c.kind)} {cardLabel(c)}
                     </option>
                   ))}
                   <option value={NEW}>+ Yeni: {b.isNew ? cardLabel(b.card) : newName}</option>

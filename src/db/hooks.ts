@@ -31,6 +31,9 @@ export const CARD_KINDS = {
   bank: { label: 'Banka hesabı', icon: '🏦' },
 } as const
 
+/** Kart türünün simgesi (bilinmeyen türde kart simgesi) */
+export const kindIcon = (kind: string | undefined) => (kind === 'bank' ? CARD_KINDS.bank.icon : CARD_KINDS.credit_card.icon)
+
 /** Ayarlar tablosundan tek bir değer (yüklenene kadar undefined) */
 export function useSetting<T>(key: string): T | undefined {
   return useLiveQuery(async () => (await db.settings.get(key))?.value as T | undefined, [key])

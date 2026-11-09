@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router'
 import { Empty, Money } from '../../components/ui'
 import { db } from '../../db/db'
-import { byId, CARD_KINDS, useCards, useTransactions } from '../../db/hooks'
+import { byId, useCards, useTransactions, kindIcon } from '../../db/hooks'
 import { formatDateTR, formatMonthTR } from '../../domain/dates'
 import { cardLabel } from '../../domain/cards'
 
@@ -42,7 +42,7 @@ export default function StatementsPage() {
               return (
                 <li key={s.id}>
                   <Link to={`/ekstreler/${s.id}`} className="flex items-center gap-3 px-4 py-3">
-                    <span className="text-2xl">{CARD_KINDS[card?.kind ?? 'credit_card'].icon}</span>
+                    <span className="text-2xl">{kindIcon(card?.kind)}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium break-words">{cardLabel(card)}</span>
                       <span className="block text-sm text-zinc-500">

@@ -5,7 +5,7 @@ import { useApp } from '../../components/AppContext'
 import { TxList } from '../../components/TxList'
 import { BarRow, ConfirmButton, Empty, Money } from '../../components/ui'
 import { db } from '../../db/db'
-import { byId, CARD_KINDS, useCards, useCategories } from '../../db/hooks'
+import { byId, useCards, useCategories, kindIcon } from '../../db/hooks'
 import { deleteStatement } from '../../db/statements'
 import { formatDateTR, formatMonthTR } from '../../domain/dates'
 import { categoryTotals, monthlyTotals } from '../../domain/stats'
@@ -47,7 +47,7 @@ export default function StatementDetailPage() {
 
       <section className="card space-y-3">
         <div className="flex items-center gap-3">
-          <span className="text-3xl">{CARD_KINDS[card?.kind ?? 'credit_card'].icon}</span>
+          <span className="text-3xl">{kindIcon(card?.kind)}</span>
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-bold break-words">{cardLabel(card)}</h1>
             <p className="text-sm text-zinc-500">{formatMonthTR(st.month)} ekstresi</p>

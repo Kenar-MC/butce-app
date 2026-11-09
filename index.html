@@ -14,6 +14,54 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Açılış bekçisi: uygulama hiç açılamazsa (yüklenemeyen dosya, eski önbellek, hata) beyaz ekran yerine
+      // açıklama ve verileri silmeden önbelleği temizleyen bir düğme gösterir. IndexedDB'ye dokunmaz.
+      ;(function () {
+        var reason = ''
+        var done = false
+        function mounted() {
+          var r = document.getElementById('root')
+          return !!(r && r.children.length)
+        }
+        function check() {
+          if (done || mounted()) return
+          done = true
+          var box = document.createElement('div')
+          box.style.cssText = 'font:16px/1.5 -apple-system,system-ui,sans-serif;padding:32px 20px;max-width:460px;margin:0 auto;color:#18181b'
+          var h = document.createElement('h1')
+          h.textContent = 'Uygulama açılamadı'
+          h.style.cssText = 'font-size:22px;margin:0 0 8px'
+          var p = document.createElement('p')
+          p.textContent = 'Verilerin silinmedi. Aşağıdaki düğme eski önbelleği temizleyip uygulamayı internetten yeniden yükler.'
+          var d = document.createElement('p')
+          d.textContent = reason ? 'Ayrıntı: ' + reason : ''
+          d.style.cssText = 'color:#71717a;font-size:13px;word-break:break-word'
+          var b = document.createElement('button')
+          b.textContent = 'Önbelleği temizle ve yenile'
+          b.style.cssText = 'min-height:48px;padding:0 20px;border:0;border-radius:14px;background:#1f7438;color:#fff;font-size:16px;font-weight:600'
+          b.onclick = function () {
+            b.disabled = true
+            b.textContent = 'Temizleniyor…'
+            var jobs = []
+            if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister() })) }))
+            if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k) })) }))
+            Promise.all(jobs).catch(function () {}).then(function () { location.reload() })
+          }
+          box.append(h, p, d, b)
+          document.body.replaceChildren(box)
+        }
+        window.addEventListener('error', function (e) {
+          reason = reason || e.message || (e.target && (e.target.src || e.target.href) ? 'Yüklenemedi: ' + (e.target.src || e.target.href) : '')
+          setTimeout(check, 4000)
+        }, true)
+        window.addEventListener('unhandledrejection', function (e) {
+          reason = reason || String((e.reason && e.reason.message) || e.reason)
+          setTimeout(check, 4000)
+        })
+        setTimeout(function () { reason = reason || 'Uygulama 12 saniyede açılmadı.'; check() }, 12000)
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
