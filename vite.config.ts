@@ -43,6 +43,10 @@ export default defineConfig({
         // Büyük simgeler sadece kurulumda lazım; internetsiz önbelleğe girmesin
         globIgnores: ['**/pwa-512.png', '**/maskable-512.png'],
         navigateFallback: 'index.html',
+        // Yeni sürüm beklemeden devreye girsin. injectRegister: false iken eklenti bunları kendisi açmıyor;
+        // açılmazsa yeni service worker "bekliyor"da kalır ve iPhone'da uygulama tamamen kapanana kadar eski sürüm açılır.
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],

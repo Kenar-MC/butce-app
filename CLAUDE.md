@@ -59,7 +59,7 @@ npm run lint      # oxlint
 - **claude.ai oturumunda:** `add_repo` (Kenar-MC/butce-app, push) → klonda çalış → `npm ci`, test, build, Playwright → commit + `git push origin main`. PC'ye dosya taşıma gerekmez.
 - Bulutta build hatası "Cannot find module @rollup/rollup-linux-x64-gnu" verirse: `npm i --no-save @rollup/rollup-linux-x64-gnu@<rollup sürümü>` (lock dosyası doğru, sadece yerel kurulum eksik).
 - Bilgisayara dosya göndermek gerekirse (`device_commit_files`) her seferinde **farklı dosya adı** kullan; aynı ad eski içeriği gönderebiliyor.
-- iPhone: Safari → Paylaş → Ana Ekrana Ekle. Ana ekran uygulamasının verisi Safari sekmesinden ayrıdır. Yeni sürüm uygulama bir sonraki açılışta kendiliğinden yüklenir (service worker, autoUpdate).
+- iPhone: Safari → Paylaş → Ana Ekrana Ekle. Ana ekran uygulamasının verisi Safari sekmesinden ayrıdır. Yeni sürüm uygulama öne gelince kendiliğinden yüklenir (service worker `skipWaiting` + `clientsClaim` — `vite.config.ts`'ten kaldırma; kaldırılırsa güncelleme "bekliyor"da takılır). Ayarlar'da "Güncellemeleri denetle" var. Ana ekran uygulamasını silmek verisini de siler.
 - Ekstre Okuyucu (claude.ai artifact, slug `b641fe36-294a-4557-a21e-93df983c9bd9`): fotoğraf → `kind:"import"` JSON. Biçim: SPEC §3.8.
 - Uçtan uca kontrol: Playwright ile 360px genişlikte ana akış (import JSON yükle → kart oluştur → Ekle → Özet grafiği/kategoriler, ikinci ay, tekrar yüklemede "zaten kayıtlı"). Ekran görüntülerini tek bir birleşik görselde incele.
 - Alt ajan (subagent) kullanma; proje küçük, tek akışta ilerle.

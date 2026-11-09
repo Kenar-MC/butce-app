@@ -9,6 +9,7 @@ import { newId, nowISO } from '../../lib/id'
 import mascot from '../../assets/mascot.webp'
 import DataSection from './DataSection'
 import { cardLabel } from '../../domain/cards'
+import { checkForUpdate } from '../../pwa'
 
 const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b']
 const KINDS: [CategoryKind, string][] = [
@@ -78,9 +79,7 @@ export default function SettingsPage() {
       <DataSection />
 
       <img src={mascot} alt="" className="mx-auto size-12 rounded-xl opacity-90" />
-      <p className="pb-2 text-center text-xs text-zinc-400">
-        Sürüm {__APP_VERSION__} · {new Date(__BUILD_DATE__).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
-      </p>
+      <UpdateCheck />
 
       {editCard && <CardSheet card={editCard} statements={counts?.[editCard.id] ?? 0} onClose={() => setEditCard(null)} />}
       {editing && <CategorySheet cat={editing.cat} kind={kind} sortOrder={list.length} onClose={() => setEditing(null)} />}
@@ -218,5 +217,35 @@ function CardSheet({ card, statements, onClose }: { card: Card; statements: numb
         </div>
       </form>
     </Sheet>
+  )
+}
+
+const UPDATE_TEXT = {
+  updating: 'Yeni sürüm yükleniyor, uygulama birazdan yenilenecek…',
+  latest: 'En güncel sürümü kullanıyorsun.',
+  offline: 'İnternet yok; bağlanınca tekrar dene.',
+  unsupported: 'Bu tarayıcı güncellemeyi denetleyemiyor.',
+} as const
+
+/** Sürüm etiketi + elle güncelleme denetimi */
+function UpdateCheck() {
+  const [state, setState] = useState<keyof typeof UPDATE_TEXT | 'checking' | null>(null)
+  return (
+    <div className="space-y-1 pb-2 text-center text-xs text-zinc-400">
+      <p>
+        Sürüm {__APP_VERSION__} · {new Date(__BUILD_DATE__).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+      </p>
+      <button
+        className="min-h-11 px-3 text-sm font-medium text-emerald-700 disabled:opacity-50 dark:text-emerald-400"
+        disabled={state === 'checking' || state === 'updating'}
+        onClick={() => {
+          setState('checking')
+          void checkForUpdate().then(setState)
+        }}
+      >
+        {state === 'checking' ? 'Denetleniyor…' : 'Güncellemeleri denetle'}
+      </button>
+      {state && state !== 'checking' && <p role="status">{UPDATE_TEXT[state]}</p>}
+    </div>
   )
 }

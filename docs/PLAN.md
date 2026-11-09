@@ -8,6 +8,7 @@
 - Yayın: GitHub Pages (`Kenar-MC/butce-app`, main'e push → otomatik). iPhone'da ana ekran uygulaması kendiliğinden güncellenir.
 - Ekstre Okuyucu artık satır başına kısa işyeri adı (`merchant`) veriyor, bakiye okumuyor.
 - E2 (2026-11-06): her ekstre hesap (banka, kart adı, son 4 hane) ve ayla etiketleniyor; farklı kart/ay ayrı ekstre; uygulama kartı son 4 haneye göre eşliyor, yoksa otomatik oluşturuyor (K15).
+- 2026-11-09 düzeltme: yeni sürüm iPhone'da "bekliyor"da kalıyordu (injectRegister: false iken eklenti skipWaiting/clientsClaim açmıyor). Artık açık + bekleyen eski sürüme SKIP_WAITING + Ayarlar'da "Güncellemeleri denetle". Takılı telefon, düzeltme yayınlanınca bir sonraki açılışta kendiliğinden geçer (eski sürüm + takılı bekleyen durumuyla yerelde canlandırılıp doğrulandı).
 - **Sıradaki (istenirse):** Fikir havuzundan seçilir.
 
 ## E1 — Ekstre sürümü ✅
