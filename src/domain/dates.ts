@@ -70,3 +70,10 @@ export function formatDateTR(iso: string, withYear = false): string {
   const [y, m, d] = parseISODate(iso)
   return (withYear ? dateYearFmt : dateFmt).format(new Date(y, m - 1, d))
 }
+
+/** İki tarih arasındaki gün farkı (to − from), saat dilimi kaymasız */
+export function daysBetween(from: string, to: string): number {
+  const [y1, m1, d1] = parseISODate(from)
+  const [y2, m2, d2] = parseISODate(to)
+  return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000)
+}

@@ -183,3 +183,8 @@ export function BarRow({
     </div>
   )
 }
+
+/** Grafikteki kesikli ortalama çizgisinin metin içi işareti */
+export function AvgSwatch() {
+  return <span aria-hidden className="mr-1 inline-block w-3.5 border-t-2 border-dashed border-zinc-400 align-middle" />
+}

@@ -1,19 +1,7 @@
-import { useSyncExternalStore } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatMonthTR } from '../domain/dates'
 import { formatTRY } from '../domain/money'
-
-/** Karanlık mod (sistem ayarı) — grafik renkleri için */
-const mq = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)') : null
-function useDark(): boolean {
-  return useSyncExternalStore(
-    (cb) => {
-      mq?.addEventListener('change', cb)
-      return () => mq?.removeEventListener('change', cb)
-    },
-    () => mq?.matches ?? false,
-  )
-}
+import { useDark } from '../lib/useDark'
 
 /** Tek seri sütunlar: seçili ay vurgulu, diğerleri aynı rengin açık tonu */
 /** Çizim alanının kenar boşlukları: sol = Y ekseni genişliği */
@@ -50,6 +38,7 @@ export default function MonthChart({
   color,
   height = 180,
   label,
+  average,
 }: {
   data: MonthPoint[]
   selected?: string
@@ -58,6 +47,8 @@ export default function MonthChart({
   height?: number
   /** Ekran okuyucu için grafiğin adı */
   label: string
+  /** Verilirse kesikli "ort." çizgisi (kuruş) */
+  average?: number
 }) {
   const dark = useDark()
   const tone = dark ? BLUE.dark : BLUE.light
@@ -111,6 +102,15 @@ export default function MonthChart({
               )
             }}
           />
+          {average !== undefined && average > 0 && (
+            <ReferenceLine
+              y={average}
+              stroke={ink}
+              strokeDasharray="4 4"
+              strokeWidth={1}
+              ifOverflow="extendDomain"
+            />
+          )}
           <Bar
             dataKey="value"
             radius={[4, 4, 0, 0]}

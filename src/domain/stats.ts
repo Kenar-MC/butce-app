@@ -129,3 +129,62 @@ export function categoryTrend(txs: Tx[], months: string[], categoryIds: string[]
 export function change(cur: number, prev: number): number | null {
   return prev ? (cur - prev) / prev : null
 }
+
+/** `end` ayıyla biten son `n` ay; verinin ilk ayından öncesi alınmaz */
+export function periodMonths(end: string, n: number, firstDataMonth?: string): string[] {
+  let start = shiftMonth(end, -(n - 1))
+  if (firstDataMonth && start < firstDataMonth) start = firstDataMonth
+  return monthsBetween(start, end)
+}
+
+export interface PeriodSummary {
+  /** Gider toplamı (kuruş) */
+  total: number
+  /** Aylık ortalama (kuruş, yuvarlanmış) */
+  average: number
+  count: number
+  /** En çok harcanan ay */
+  peak?: { month: string; amount: number }
+  /** En büyük tek harcama */
+  biggest?: { amount: number; merchant: string; date: string }
+}
+
+/** Seçili aylardaki gider özeti */
+export function periodSummary(txs: (Tx & { date?: string })[], months: string[]): PeriodSummary {
+  const set = new Set(months)
+  const rows = txs.filter((t) => t.type === 'expense' && set.has(t.month))
+  const total = rows.reduce((s, t) => s + t.amount, 0)
+  const byMonth = monthlyTotals(rows, months)
+  const peak = byMonth.reduce<PeriodSummary['peak']>((p, m) => (m.expense > (p?.amount ?? 0) ? { month: m.month, amount: m.expense } : p), undefined)
+  const big = rows.reduce<(typeof rows)[number] | undefined>((b, t) => (!b || t.amount > b.amount ? t : b), undefined)
+  return {
+    total,
+    average: months.length ? Math.round(total / months.length) : 0,
+    count: rows.length,
+    peak,
+    biggest: big ? { amount: big.amount, merchant: big.merchant, date: big.date ?? '' } : undefined,
+  }
+}
+
+export interface ShareSegment {
+  /** categoryId; geri kalanlar için 'other' */
+  key: string
+  amount: number
+  share: number
+  count: number
+}
+
+/** Dağılım çubuğu: en büyük `n` kategori + kalanların toplamı ("Diğer") */
+export function topShares(cats: CategoryTotal[], n = 5): ShareSegment[] {
+  const head = cats.slice(0, n).map((c) => ({ key: c.categoryId, amount: c.amount, share: c.share, count: c.count }))
+  const rest = cats.slice(n)
+  if (rest.length) {
+    head.push({
+      key: 'other',
+      amount: rest.reduce((s, c) => s + c.amount, 0),
+      share: rest.reduce((s, c) => s + c.share, 0),
+      count: rest.reduce((s, c) => s + c.count, 0),
+    })
+  }
+  return head
+}

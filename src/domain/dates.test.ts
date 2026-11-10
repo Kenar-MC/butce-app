@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addMonths, daysInMonth, formatMonthTR, monthRange, shiftMonth, formatDayTR } from './dates'
+import { addMonths, daysInMonth, formatMonthTR, monthRange, shiftMonth, formatDayTR, daysBetween } from './dates'
 
 describe('dates', () => {
   it('daysInMonth', () => {
@@ -29,5 +29,14 @@ describe('formatDayTR', () => {
     expect(formatDayTR('2026-10-30', 2026)).not.toContain('2026')
     expect(formatDayTR('2025-03-05', 2026)).toContain('2025')
     expect(formatDayTR('2025-03-05')).not.toContain('2025')
+  })
+})
+
+describe('daysBetween', () => {
+  it('gün farkını ay ve yıl geçişinde de doğru sayar', () => {
+    expect(daysBetween('2026-11-10', '2026-11-24')).toBe(14)
+    expect(daysBetween('2026-12-31', '2027-01-01')).toBe(1)
+    expect(daysBetween('2026-11-10', '2026-11-10')).toBe(0)
+    expect(daysBetween('2026-11-10', '2026-11-01')).toBe(-9)
   })
 })

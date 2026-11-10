@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { categoryTotals, categoryTrend, change, chartMonths, merchantTotals, monthlyTotals, monthsBetween, topCategoryIds } from './stats'
+import { categoryTotals, categoryTrend, change, chartMonths, merchantTotals, monthlyTotals, monthsBetween, periodMonths, periodSummary, topCategoryIds, topShares } from './stats'
 import { guessMerchant, merchantKey } from './merchant'
 
 const tx = (month: string, amount: number, categoryId: string, merchant: string, type: 'expense' | 'income' = 'expense') => ({
@@ -72,5 +72,29 @@ describe('işyeri adı', () => {
     expect(merchantKey('  Kahve  Dünyası! ')).toBe('kahve dunyasi')
     expect(merchantKey('ŞOK')).toBe(merchantKey('SOK'))
     expect(merchantKey('İKEA')).toBe('ikea')
+  })
+})
+
+describe('dönem özeti', () => {
+  it('periodMonths son n ayı verir, ilk veri ayından öncesine gitmez', () => {
+    expect(periodMonths('2026-11', 3)).toEqual(['2026-09', '2026-10', '2026-11'])
+    expect(periodMonths('2026-11', 12, '2026-08')).toEqual(['2026-08', '2026-09', '2026-10', '2026-11'])
+  })
+  it('toplam, aylık ortalama, en yüksek ay ve en büyük harcama', () => {
+    const rows = txs.map((t, i) => ({ ...t, date: `${t.month}-0${i + 1}` }))
+    const s = periodSummary(rows, ['2026-09', '2026-10'])
+    expect(s.total).toBe(75000)
+    expect(s.average).toBe(37500)
+    expect(s.count).toBe(5)
+    expect(s.peak).toEqual({ month: '2026-10', amount: 50000 })
+    expect(s.biggest).toEqual({ amount: 30000, merchant: 'MIGROS', date: '2026-10-04' })
+    expect(periodSummary([], ['2026-10'])).toEqual({ total: 0, average: 0, count: 0, peak: undefined, biggest: undefined })
+  })
+  it('topShares ilk n kategoriyi ve kalanların toplamını verir', () => {
+    const s = topShares(categoryTotals(txs), 2)
+    expect(s.map((x) => x.key)).toEqual(['market', 'ev', 'other'])
+    expect(s[2].amount).toBe(10000)
+    expect(s.reduce((a, x) => a + x.share, 0)).toBeCloseTo(1)
+    expect(topShares(categoryTotals(txs), 5).some((x) => x.key === 'other')).toBe(false)
   })
 })
