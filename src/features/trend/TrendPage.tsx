@@ -79,7 +79,7 @@ export default function TrendPage() {
       {head}
 
       {/* Ay seçici: kaydırınca da üstte kalır */}
-      <div className="sticky top-0 z-[5] -mx-4 space-y-2 bg-zinc-50 px-4 pt-[env(safe-area-inset-top)] pb-2 backdrop-blur dark:bg-zinc-950/95">
+      <div className="sticky top-0 z-[5] -mx-4 space-y-2 bg-zinc-50 px-4 pt-[env(safe-area-inset-top)] pb-2 backdrop-blur dark:bg-zinc-950">
         <MonthStepper month={sel} months={dataMonths} onChange={pick} />
         {multiCard && (
           <SelectChip
