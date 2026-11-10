@@ -23,6 +23,33 @@
   --color-gold-500: #e8b31c;
 }
 
+/* Tema geçişi: sadece ay/güneş anahtarına basıldığında kısa süre açık (src/lib/theme.ts) */
+html.theme-anim,
+html.theme-anim *,
+html.theme-anim *::before,
+html.theme-anim *::after {
+  transition-property: color, background-color, border-color, outline-color, fill, stroke, box-shadow, opacity, translate, transform !important;
+  transition-duration: 500ms !important;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition-delay: 0s !important;
+}
+
+/* Tek seri sütun mavisi (K14): seçili / diğer, açık ve karanlık */
+.bar-on { fill: #2a78d6; }
+.bar-off { fill: #86b6ef; }
+.dark .bar-on { fill: #3987e5; }
+.dark .bar-off { fill: #184f95; }
+.month-chart .recharts-cartesian-grid line { stroke: #e4e4e7; }
+.month-chart .recharts-cartesian-axis-tick-value { fill: #52525b; }
+.month-chart .chart-avg, .month-chart .recharts-reference-line line { stroke: #52525b; }
+.month-chart .chart-value { fill: #18181b; }
+.month-chart .chart-cursor { fill: #00000008; }
+.dark .month-chart .recharts-cartesian-grid line { stroke: #27272a; }
+.dark .month-chart .recharts-cartesian-axis-tick-value { fill: #a1a1aa; }
+.dark .month-chart .chart-avg, .dark .month-chart .recharts-reference-line line { stroke: #a1a1aa; }
+.dark .month-chart .chart-value { fill: #fafafa; }
+.dark .month-chart .chart-cursor { fill: #ffffff10; }
+
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;

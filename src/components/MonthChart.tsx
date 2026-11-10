@@ -1,13 +1,12 @@
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatMonthTR } from '../domain/dates'
 import { formatTRY } from '../domain/money'
-import { useDark } from '../lib/useDark'
 
 /** Tek seri sütunlar: seçili ay vurgulu, diğerleri aynı rengin açık tonu */
 /** Çizim alanının kenar boşlukları: sol = Y ekseni genişliği */
 const PLOT = { left: 44, right: 4 }
 
-const BLUE = { light: { on: '#2a78d6', off: '#86b6ef' }, dark: { on: '#3987e5', off: '#184f95' } }
+/* Tek seri mavi: renkler index.css'te .bar-on / .bar-off (tema değişince sütunlar da yumuşakça geçsin diye CSS'te) */
 
 const shortMonth = new Intl.DateTimeFormat('tr-TR', { month: 'short' })
 const compact = new Intl.NumberFormat('tr-TR', { notation: 'compact', maximumFractionDigits: 1 })
@@ -50,10 +49,7 @@ export default function MonthChart({
   /** Verilirse kesikli "ort." çizgisi (kuruş) */
   average?: number
 }) {
-  const dark = useDark()
-  const tone = dark ? BLUE.dark : BLUE.light
-  const grid = dark ? '#27272a' : '#e4e4e7'
-  const ink = dark ? '#a1a1aa' : '#52525b'
+  // Renkler JS'te değil CSS'te (.month-chart, index.css): tema değişince grafik yeniden çizilmez, yumuşakça geçer
   const selIndex = data.findIndex((d) => d.month === selected)
 
   return (
@@ -61,7 +57,7 @@ export default function MonthChart({
       role="img"
       aria-label={label}
       style={{ height, cursor: onSelect ? 'pointer' : undefined }}
-      className="-mx-1 select-none"
+      className="month-chart -mx-1 select-none"
       onClick={(e) => {
         // Dokunulan ayın sütun bandını konumdan bul (dokunmatikte Recharts'ın etkin sütunu güvenilir değil)
         if (!onSelect || !data.length) return
@@ -78,18 +74,18 @@ export default function MonthChart({
           margin={{ top: 18, right: PLOT.right, bottom: 0, left: 0 }}
           barCategoryGap="22%"
         >
-          <CartesianGrid vertical={false} stroke={grid} strokeWidth={1} />
-          <XAxis dataKey="month" tickFormatter={tick} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={2} tick={{ fill: ink, fontSize: 11 }} />
+          <CartesianGrid vertical={false} strokeWidth={1} />
+          <XAxis dataKey="month" tickFormatter={tick} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={2} tick={{ fontSize: 11 }} />
           <YAxis
             tickFormatter={compactTRY}
             tickLine={false}
             axisLine={false}
             width={PLOT.left}
             tickCount={4}
-            tick={{ fill: ink, fontSize: 12 }}
+            tick={{ fontSize: 12 }}
           />
           <Tooltip
-            cursor={{ fill: dark ? '#ffffff10' : '#00000008' }}
+            cursor={{ className: 'chart-cursor' }}
             content={({ active, payload }) => {
               const p = payload?.[0]?.payload as MonthPoint | undefined
               if (!active || !p) return null
@@ -105,7 +101,7 @@ export default function MonthChart({
           {average !== undefined && average > 0 && (
             <ReferenceLine
               y={average}
-              stroke={ink}
+              className="chart-avg"
               strokeDasharray="4 4"
               strokeWidth={1}
               ifOverflow="extendDomain"
@@ -119,7 +115,11 @@ export default function MonthChart({
           >
             {data.map((d) => {
               const on = selected === undefined || d.month === selected
-              return <Cell key={d.month} fill={color ?? (on ? tone.on : tone.off)} fillOpacity={color && !on ? 0.4 : 1} />
+              return color ? (
+                <Cell key={d.month} fill={color} fillOpacity={on ? 1 : 0.4} />
+              ) : (
+                <Cell key={d.month} className={on ? 'bar-on' : 'bar-off'} />
+              )
             })}
             <LabelList
               dataKey="value"
@@ -127,7 +127,7 @@ export default function MonthChart({
                 if (p.index !== selIndex || selIndex < 0 || !data[selIndex].value) return null
                 const x = Number(p.x) + Number(p.width) / 2
                 return (
-                  <text x={x} y={Number(p.y) - 6} textAnchor="middle" fontSize={12} fontWeight={600} fill={dark ? '#fafafa' : '#18181b'}>
+                  <text x={x} y={Number(p.y) - 6} textAnchor="middle" fontSize={12} fontWeight={600} className="chart-value">
                     {compactTRY(data[selIndex].value)}
                   </text>
                 )

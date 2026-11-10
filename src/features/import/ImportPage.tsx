@@ -16,7 +16,7 @@ export default function ImportPage() {
 
   return (
     <div className="space-y-4">
-      <div className="pr-12">
+      <div className="pr-[4.5rem]">
         <h1 className="text-xl font-bold">Ekstre yükle</h1>
         <p className="text-sm text-zinc-500">Kredi kartı ekstresi ya da banka hesap hareketleri: fotoğraf, ekran görüntüsü veya PDF.</p>
       </div>

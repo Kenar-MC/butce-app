@@ -22,6 +22,9 @@ export function applyTheme(t: Theme = current) {
   root.style.colorScheme = t
 }
 
+let animTimer = 0
+
+/** Temayı değiştirir; renkler sert değil, ~0,5 sn'de yumuşakça geçer (hareket azaltma açıksa anında). */
 export function setTheme(t: Theme) {
   current = t
   try {
@@ -29,9 +32,20 @@ export function setTheme(t: Theme) {
   } catch {
     /* özel mod vb. — sadece bu oturumda geçerli */
   }
+  const root = document.documentElement
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (!reduce) {
+    root.classList.add('theme-anim')
+    void root.offsetWidth // geçiş kuralı renk değişmeden önce uygulansın
+    window.clearTimeout(animTimer)
+    animTimer = window.setTimeout(() => root.classList.remove('theme-anim'), THEME_ANIM_MS + 100)
+  }
   applyTheme(t)
   listeners.forEach((l) => l())
 }
+
+/** index.css'teki .theme-anim süresiyle aynı */
+export const THEME_ANIM_MS = 500
 
 export function useTheme(): Theme {
   return useSyncExternalStore(

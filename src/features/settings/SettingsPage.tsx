@@ -33,7 +33,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="flex min-h-11 items-center pr-12 text-xl font-bold">Ayarlar</h1>
+      <h1 className="flex min-h-11 items-center pr-[4.5rem] text-xl font-bold">Ayarlar</h1>
 
       <section className="space-y-3">
         <h2 className="font-semibold">Kartlar ve hesaplar</h2>

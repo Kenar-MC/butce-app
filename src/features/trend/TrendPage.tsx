@@ -32,7 +32,7 @@ export default function TrendPage() {
   const dataMonths = [...new Set(all.map((t) => t.month))].sort()
 
   const head = (
-    <div className="pr-12">
+    <div className="pr-[4.5rem]">
       <h1 className="text-xl font-bold">Trend</h1>
       <p className="text-sm text-zinc-500">Ay seç; bütün kategoriler o ay ve önceki aylarla birlikte görünür.</p>
     </div>

@@ -39,6 +39,7 @@
 - [x] Özet: dönem seçimi (Bu ay/3/6/12 ay), kahraman toplam + önceki döneme göre, 4 kutu, harcama dağılımı şeridi, aylık grafik + ortalama çizgisi, en çok harcanan yerler, kartlara göre, yaklaşan son ödemeler
 - [x] Trend: yapışkan ay seçici, ay kartı + 12 ay grafiği, bütün kategoriler (seçili ay + ortalama + mini sütunlar, açılınca grafik + işlemler), o ayın işyerleri
 - [x] Karanlık mod varsayılan + ay/güneş düğmesi, seçim cihazda saklanır (K17)
+- [x] Kaydırmalı anahtar + yumuşak renk geçişi (500 ms; hareket azaltma açıksa anında)
 - [x] `stats.ts`: `periodMonths`, `periodSummary`, `topShares`; `dates.ts`: `daysBetween` (testli)
 
 **Kabul:** 360px'te demo verisiyle Özet (3/12 ay/Bu ay), dağılım satırına ve grafikte bir aya dokununca Trend'e geçiş, Trend'de ay değiştirme ve kategori açma; ilk açılış sistem açık modda olsa da karanlık, düğmeyle açık moda geçip yenileyince açık kalıyor. (Playwright ile doğrulandı.)
