@@ -137,7 +137,8 @@ src/
 ├─ features/
 │  ├─ dashboard/ (Özet)  ├─ trend/  ├─ statements/ (liste, detay, TxSheet)  ├─ import/  └─ settings/
 ├─ components/  ui.tsx (Sheet, MonthStepper, Money, ConfirmButton, Segmented, SelectChip, BarRow, Empty),
-│               MonthChart.tsx (Recharts), TxList.tsx, Layout.tsx, AppContext.ts
-└─ lib/         id.ts, files.ts
+│               MonthChart.tsx (Recharts), ShareBar.tsx (dağılım şeridi + RankList), ThemeToggle.tsx,
+│               TxList.tsx, Layout.tsx, AppContext.ts
+└─ lib/         id.ts, files.ts, theme.ts (karanlık/açık, K17), useDark.ts
 tools/ekstre-okuyucu/index.html   — artifact kaynağı
 ```
