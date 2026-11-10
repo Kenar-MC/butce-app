@@ -8,18 +8,22 @@
 Alt menü (mobil) / yan menü (≥768px): **Özet · Trend · Ekstreler · Ayarlar**. Sağ altta yeşil yükleme düğmesi → İçe aktar.
 Kart filtresi (birden fazla kart varsa) ve seçili ay Özet ile Trend arasında ortak (`AppContext`).
 
-### 1.1 Özet (`/`)
-- Maskot + ayın durumuna göre laf (geçen aya göre fazla/az).
-- Ay seçici: oklar sadece **verisi olan aylar** arasında gezer. Varsayılan: verisi olan son ay; içe aktarmadan sonra aktarılan ay.
-- Kahraman kart: "Ekim 2026 harcaması" (kırmızı), işlem sayısı, geçen aya göre değişim (▲ fazla kırmızı / ▼ az yeşil; %0 ise yazılmaz), iade/gelen para ayrı.
-- **Aylık harcama**: son 12 ayın sütun grafiği (Recharts). Tek seri, mavi; seçili ay koyu, diğerleri açık ton, seçili sütunun üstünde değer. Bir aya (sütunun hizasına) dokununca o ay seçilir. Y ekseni kısaltılmış (`7,5 B`).
-- **Kategoriler**: seçili ayın gider dağılımı, tam yükseklikte dolu çubuk satırları (kategori rengi, işlem sayısı, %). Dokununca o kategorinin işlemleri altında açılır.
-- **En çok harcanan yerler**: işyeri bazında (ilk 8, "Tümünü göster"), dokununca işlemleri açılır.
+### 1.1 Özet (`/`) — genel bakış (E3)
+- Maskot + döneme göre laf. Sağ üstte ay/güneş düğmesi (her ekranda; K17).
+- Dönem: **Bu ay / 3 ay (varsayılan) / 6 ay / 12 ay** + kart seçimi. Dönem, verisi olan son aya kadar sayılır.
+- Kahraman kart: dönemin toplam harcaması (kırmızı) + önceki eşit uzunlukta döneme göre değişim (▲ kırmızı / ▼ yeşil).
+- 4 kutu: Bu ay → 12 ay ortalaması, işlem, geçen ay, en büyük harcama; diğer dönemler → aylık ortalama, işlem, en yüksek ay, en büyük harcama (işyeri + tarih).
+- **Harcama dağılımı**: pasta yerine yüzdeli **parçalı şerit** (ilk 5 kategori + "Diğer" gri) ve altında aynı sırada liste (simge, ad, %, tutar). Dokununca Trend'de o kategori açılır.
+- **Aylık harcama**: son 12 ay sütun grafiği + kesikli ortalama çizgisi (başlıkta "ort. ₺…"). Bir aya dokununca Trend o aya geçer.
+- **En çok harcanan yerler** (ilk 5) ve **Kartlara göre** (birden fazla kart varsa; dokununca o karta süzer): ince mavi çubuklu sıralı liste.
+- **Yaklaşan son ödemeler**: son ödeme tarihi bugün/sonra olan ekstreler, kaç gün kaldı (≤3 gün sarı), dokununca ekstre.
 - Hiç veri yoksa karşılama: maskot, iki adımlık açıklama, "İlk ekstreni yükle".
 
-### 1.2 Trend (`/trend`)
-- Son 6 / 12 ay seçimi; toplam ve aylık ortalama.
-- Her kategori bir satır (pencere toplamına göre büyükten küçüğe): aylık ortalama, **son ay** tutarı, son ayın önceki ayların ortalamasına göre değişimi, küçük sütunlar (son ay koyu). Dokununca o kategorinin aylık sütun grafiği açılır.
+### 1.2 Trend (`/trend`) — ay ay ayrıntı (eski "Aylık" görünüm buraya katıldı, E3)
+- Üstte yapışkan **ay seçici** (verisi olan aylar) + kart seçimi.
+- Ay kartı: o ayın harcaması, işlem sayısı, geçen aya göre değişim, ortalamaya göre üstünde/altında, iade/gelen; 12 ay grafiği (seçili ay koyu, ortalama çizgisi), sütuna dokununca ay değişir.
+- **Kategoriler**: 12 aylık pencerede harcaması olan **bütün** kategoriler, seçili aydaki tutara göre sıralı. Satırda aylık ortalama, diğer ayların ortalamasına göre değişim ya da "bu ay yok", 12 küçük sütun (seçili ay koyu), sağda o ayın tutarı. Dokununca kategorinin aylık grafiği ve o ayki işlemleri açılır.
+- **En çok harcanan yerler · {ay}**: işyeri bazında, "Tümünü göster", dokununca işlemleri açılır.
 
 ### 1.3 Ekstreler (`/ekstreler`, `/ekstreler/:id`)
 - Liste: aya göre gruplu (yeniden eskiye), her satır kart · işlem sayısı · son ödeme · harcama.

@@ -51,7 +51,7 @@ npm run lint      # oxlint
 **Tasarım**
 - Mobile-first: 360px genişlikten başla, sonra ≥768px için genişlet.
 - Dokunma alanları ≥ 44px; tutar alanında `inputmode="decimal"`.
-- Tutarlarda gelir/iade yeşil, harcama kırmızı. Grafikte tek seri sütunlar mavi, kategori grafikleri kategori rengi (K14). Karanlık mod sistem ayarına göre.
+- Tutarlarda gelir/iade yeşil, harcama kırmızı. Grafikte tek seri sütunlar mavi, kategori grafikleri kategori rengi (K14). Karanlık mod varsayılan; sağ üstteki ay/güneş düğmesiyle açık moda geçilir (K17, `src/lib/theme.ts`).
 - Boş durumlarda yönlendirici mesaj göster ("Henüz ekstre yok — sağ alttaki düğmeyle yükle").
 
 ## Çalışma ortamı
