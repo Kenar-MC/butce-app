@@ -69,7 +69,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pr-12">
         <img src={mascot} alt="Bütçe maskotu" className="size-14 shrink-0 rounded-2xl shadow-md ring-2 ring-emerald-800/20" />
         <div className="min-w-0 flex-1">
           <div className="text-xl font-extrabold tracking-tight text-emerald-800 dark:text-emerald-300">Bütçe</div>

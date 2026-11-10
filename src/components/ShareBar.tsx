@@ -29,7 +29,7 @@ export default function ShareBar({
   const mode = dark ? 'dark' : 'light'
   const colorOf = (i: number, key: string) => (key === 'other' ? OTHER[mode] : RAMP[mode][Math.min(i, 4)])
   const whiteOn = (i: number, key: string) => (key === 'other' ? dark : INK_ON[mode][Math.min(i, 4)])
-  const nameOf = (key: string) => (key === 'other' ? 'Diğer kategoriler' : (catById[key]?.name ?? 'Kategorisiz'))
+  const nameOf = (key: string) => (key === 'other' ? 'Diğer' : (catById[key]?.name ?? 'Kategorisiz'))
   const iconOf = (key: string) => (key === 'other' ? '•••' : (catById[key]?.icon ?? '❔'))
 
   if (!segments.length) return <p className="py-4 text-center text-sm text-zinc-500">Bu dönemde harcama yok.</p>

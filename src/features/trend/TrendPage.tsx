@@ -32,7 +32,7 @@ export default function TrendPage() {
   const dataMonths = [...new Set(all.map((t) => t.month))].sort()
 
   const head = (
-    <div>
+    <div className="pr-12">
       <h1 className="text-xl font-bold">Trend</h1>
       <p className="text-sm text-zinc-500">Ay seç; bütün kategoriler o ay ve önceki aylarla birlikte görünür.</p>
     </div>
@@ -135,7 +135,7 @@ export default function TrendPage() {
             const pct = c.delta === null ? null : Math.round(c.delta * 100)
             return (
               <li key={c.categoryId} className="card p-0">
-                <button className="flex w-full items-center gap-3 p-3 text-left" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : c.categoryId)}>
+                <button className="flex w-full items-center gap-2 p-3 text-left min-[400px]:gap-3" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : c.categoryId)}>
                   <span className="grid size-10 shrink-0 place-items-center rounded-full text-lg" style={{ background: `${color}22` }}>
                     {cat?.icon ?? '❔'}
                   </span>
@@ -152,16 +152,16 @@ export default function TrendPage() {
                       )}
                     </span>
                   </span>
-                  <span className="flex h-9 items-end gap-0.5" aria-hidden>
+                  <span className="flex h-9 shrink-0 items-end gap-px min-[400px]:gap-0.5" aria-hidden>
                     {c.values.map((v, i) => (
                       <span
                         key={axis[i]}
-                        className="w-1.5 rounded-t-sm"
+                        className="w-1 rounded-t-sm min-[400px]:w-1.5"
                         style={{ height: `${Math.max((v / max) * 100, v ? 8 : 3)}%`, background: color, opacity: i === selIndex ? 1 : 0.35 }}
                       />
                     ))}
                   </span>
-                  <span className="w-20 shrink-0 text-right">
+                  <span className="w-[4.75rem] shrink-0 text-right">
                     <Money value={c.now} className="block text-sm font-semibold" />
                     <span className="block text-[11px] text-zinc-500">{formatMonthTR(sel).split(' ')[0]}</span>
                   </span>

@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Karanlık mod <html class="dark"> ile (varsayılan; ay/güneş düğmesi değiştirir — K17) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Tema: maskottan — şapka yeşili (emerald yerine) ve altın ₺; nötrler Tailwind'in temiz zinc'i */
 @theme {
   --color-emerald-50: #eef7ef;

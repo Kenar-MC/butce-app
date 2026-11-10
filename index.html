@@ -11,6 +11,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Bütçe" />
     <title>Bütçe</title>
+    <script>
+      // Görünüm ilk boyamadan önce: varsayılan karanlık (K17)
+      try {
+        var t = localStorage.getItem('butce-theme') === 'light' ? 'light' : 'dark'
+      } catch (e) {
+        t = 'dark'
+      }
+      document.documentElement.classList.toggle('dark', t === 'dark')
+      document.documentElement.style.colorScheme = t
+    </script>
   </head>
   <body>
     <div id="root"></div>

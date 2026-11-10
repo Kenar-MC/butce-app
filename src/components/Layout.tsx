@@ -7,6 +7,7 @@ import type { Transaction } from '../db/types'
 import { monthKey, todayISO } from '../domain/dates'
 import TxSheet from '../features/statements/TxSheet'
 import { AppContext } from './AppContext'
+import ThemeToggle from './ThemeToggle'
 
 const NAV = [
   { to: '/', label: 'Özet', icon: '📊' },
@@ -53,7 +54,8 @@ export default function Layout() {
           ))}
         </aside>
 
-        <main className="mx-auto w-full max-w-3xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 md:pb-10">
+        <main className="relative mx-auto w-full max-w-3xl px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-28 md:pb-10">
+          <ThemeToggle className="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 z-[6]" />
           <Outlet />
         </main>
 

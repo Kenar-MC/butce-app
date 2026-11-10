@@ -79,7 +79,7 @@ export default function MonthChart({
           barCategoryGap="22%"
         >
           <CartesianGrid vertical={false} stroke={grid} strokeWidth={1} />
-          <XAxis dataKey="month" tickFormatter={tick} tickLine={false} axisLine={false} interval="preserveStartEnd" tick={{ fill: ink, fontSize: 12 }} />
+          <XAxis dataKey="month" tickFormatter={tick} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={2} tick={{ fill: ink, fontSize: 11 }} />
           <YAxis
             tickFormatter={compactTRY}
             tickLine={false}
