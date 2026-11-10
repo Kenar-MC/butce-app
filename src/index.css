@@ -23,7 +23,19 @@
   --color-gold-500: #e8b31c;
 }
 
-/* Tema geçişi: sadece ay/güneş anahtarına basıldığında kısa süre açık (src/lib/theme.ts) */
+/* Tema geçişi (src/lib/theme.ts). 1) View Transition: ekranın tamamı tek parça 500 ms çapraz geçer
+   (yazı + arka plan aynı anda). Anahtar ayrı tutulur ve canlı kalır, düğme kendi geçişiyle kayar. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 500ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+.theme-toggle { view-transition-name: theme-toggle; }
+::view-transition-group(theme-toggle),
+::view-transition-new(theme-toggle) { animation: none; }
+::view-transition-old(theme-toggle) { display: none; }
+
+/* 2) View Transition yoksa: anahtara basıldığında kısa süre CSS geçişleri açık */
 html.theme-anim,
 html.theme-anim *,
 html.theme-anim *::before,

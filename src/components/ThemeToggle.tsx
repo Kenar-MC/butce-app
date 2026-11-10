@@ -23,7 +23,7 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
       aria-label="Karanlık mod"
       title={dark ? 'Açık moda geç' : 'Karanlık moda geç'}
       onClick={() => setTheme(dark ? 'light' : 'dark')}
-      className={`group grid h-11 w-14 place-items-center ${className}`}
+      className={`theme-toggle group grid h-11 w-14 place-items-center ${className}`}
     >
       <span className="relative block h-7 w-14 rounded-full border border-zinc-300 bg-zinc-200 shadow-inner transition-colors duration-500 dark:border-zinc-700 dark:bg-zinc-800">
         {/* Raydaki soluk simgeler */}
